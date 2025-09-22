@@ -1,12 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
-class AddProjectModal extends StatelessWidget {
+class AddProjectModal extends StatefulWidget {
   const AddProjectModal({super.key});
+
+  @override
+  State<AddProjectModal> createState() => _AddProjectModalState();
+}
+
+class _AddProjectModalState extends State<AddProjectModal> {
+  // Controladores para cada campo de data
+  final TextEditingController _dataApresentacaoController =
+      TextEditingController();
+  final TextEditingController _dataAprovacaoController =
+      TextEditingController();
+  final TextEditingController _dataPrestacaoContasController =
+      TextEditingController();
+  final TextEditingController _inicioCaptacaoController =
+      TextEditingController();
+  final TextEditingController _finalCaptacaoController =
+      TextEditingController();
+  final TextEditingController _inicioExecucaoController =
+      TextEditingController();
+  final TextEditingController _fimExecucaoController = TextEditingController();
+
+  @override
+  void dispose() {
+    // Limpar os controladores ao remover o widget da árvore
+    _dataApresentacaoController.dispose();
+    _dataAprovacaoController.dispose();
+    _dataPrestacaoContasController.dispose();
+    _inicioCaptacaoController.dispose();
+    _finalCaptacaoController.dispose();
+    _inicioExecucaoController.dispose();
+    _fimExecucaoController.dispose();
+    super.dispose();
+  }
+
+  // Função para abrir o DatePicker e atualizar o campo de texto
+  Future<void> _selectDate(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) {
+      setState(() {
+        controller.text = DateFormat('dd/MM/yyyy').format(picked);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      // Padding para evitar que o teclado cubra os campos
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
         left: 24,
@@ -27,27 +79,60 @@ class AddProjectModal extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            TextFormField(
-              decoration: const InputDecoration(
-                labelText: 'Nome do Projeto',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                ),
-                prefixIcon: Icon(Icons.folder_outlined),
-              ),
+
+            // Campos do formulário
+            _buildTextField(label: 'Nome Projeto/Emenda'),
+            _buildDatePickerField(
+              label: 'Data Apresentação',
+              controller: _dataApresentacaoController,
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Resumo',
-                alignLabelWithHint: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                ),
-                prefixIcon: Icon(Icons.notes_outlined),
-              ),
+            _buildCurrencyField(label: 'Valor apresentado'),
+            _buildDatePickerField(
+              label: 'Data Aprovação',
+              controller: _dataAprovacaoController,
             ),
+            _buildDatePickerField(
+              label: 'Data Prestação de contas',
+              controller: _dataPrestacaoContasController,
+            ),
+            _buildDatePickerField(
+              label: 'Início Captação',
+              controller: _inicioCaptacaoController,
+            ),
+            _buildDatePickerField(
+              label: 'Final Captação',
+              controller: _finalCaptacaoController,
+            ),
+            _buildCurrencyField(label: 'Total captado'),
+
+            // Período de Execução com dois campos de data
+            const Text(
+              "Período de Execução",
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDatePickerField(
+                    label: 'Início',
+                    controller: _inicioExecucaoController,
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildDatePickerField(
+                    label: 'Fim',
+                    controller: _fimExecucaoController,
+                    isDense: true,
+                  ),
+                ),
+              ],
+            ),
+
+            _buildTextField(label: 'Contempla', maxLines: 3),
+            _buildTextField(label: 'Contatos', maxLines: 3),
+
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -61,13 +146,75 @@ class AddProjectModal extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  Navigator.of(context).pop(); // Fecha o modal
+                  // TODO: Implementar lógica de salvar
+                  Navigator.of(context).pop();
                 },
                 child: const Text('Salvar Projeto'),
               ),
             ),
             const SizedBox(height: 24),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Widget helper para campos de texto simples e multiline
+  Widget _buildTextField({required String label, int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextFormField(
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          alignLabelWithHint: maxLines > 1,
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget helper para campos de data com DatePicker
+  Widget _buildDatePickerField({
+    required String label,
+    required TextEditingController controller,
+    bool isDense = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextFormField(
+        controller: controller,
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+          suffixIcon: const Icon(Icons.calendar_today),
+          isDense: isDense,
+        ),
+        onTap: () => _selectDate(context, controller),
+      ),
+    );
+  }
+
+  // Widget helper para campos de valor monetário
+  Widget _buildCurrencyField({required String label}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextFormField(
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'^\d+\,?\d{0,2}')),
+        ],
+        decoration: InputDecoration(
+          labelText: label,
+          prefixText: 'R\$ ',
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
         ),
       ),
     );

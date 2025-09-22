@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/home_screen.dart';
 
-// Use o DevicePreview para testar a responsividade em diferentes aparelhos
 void main() {
   runApp(const MyApp());
 }
