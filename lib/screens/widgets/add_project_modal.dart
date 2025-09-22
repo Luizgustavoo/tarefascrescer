@@ -10,7 +10,6 @@ class AddProjectModal extends StatefulWidget {
 }
 
 class _AddProjectModalState extends State<AddProjectModal> {
-  // Controladores para cada campo de data
   final TextEditingController _dataApresentacaoController =
       TextEditingController();
   final TextEditingController _dataAprovacaoController =
@@ -27,7 +26,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
 
   @override
   void dispose() {
-    // Limpar os controladores ao remover o widget da árvore
     _dataApresentacaoController.dispose();
     _dataAprovacaoController.dispose();
     _dataPrestacaoContasController.dispose();
@@ -38,7 +36,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
     super.dispose();
   }
 
-  // Função para abrir o DatePicker e atualizar o campo de texto
   Future<void> _selectDate(
     BuildContext context,
     TextEditingController controller,
@@ -80,7 +77,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
             ),
             const SizedBox(height: 24),
 
-            // Campos do formulário
             _buildTextField(label: 'Nome Projeto/Emenda'),
             _buildDatePickerField(
               label: 'Data Apresentação',
