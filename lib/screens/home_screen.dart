@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'widgets/add_project_modal.dart'; // Importe o novo modal
+import 'widgets/add_project_modal.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/home_header.dart';
 import 'widgets/project_card.dart';
@@ -8,11 +8,10 @@ import 'widgets/recent_project_card.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // Função para abrir o modal de adicionar projeto
   void _showAddProjectModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Permite que o modal cresça sobre o teclado
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -24,21 +23,17 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // A estrutura da Scaffold agora chama a função _showAddProjectModal
     return Scaffold(
       body: SafeArea(
-        // O conteúdo do ListView permanece o mesmo
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 24.0),
           children: [
-            // Cabeçalho
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24.0),
               child: HomeHeader(),
             ),
             const SizedBox(height: 24),
 
-            // Banner Roxo (Placeholder)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Container(
@@ -51,7 +46,6 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // Seção "Recentes movimentados"
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Text(
@@ -95,7 +89,6 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // Seção "Todos os Projetos"
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Text(
@@ -108,7 +101,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
@@ -118,6 +111,9 @@ class HomeScreen extends StatelessWidget {
                     summary:
                         'Criação de um novo aplicativo para gerenciamento de tarefas e equipes...',
                     status: 'Em Andamento',
+                    onAttach: () {},
+                    onDelete: () {},
+                    onEdit: () {},
                   ),
                   SizedBox(height: 16),
                   ProjectCard(
@@ -126,6 +122,9 @@ class HomeScreen extends StatelessWidget {
                     summary:
                         'Projeto de arquitetura e design de interiores para a nova sede da empresa.',
                     status: 'Concluído',
+                    onAttach: () {},
+                    onDelete: () {},
+                    onEdit: () {},
                   ),
                   SizedBox(height: 16),
                   ProjectCard(
@@ -134,6 +133,9 @@ class HomeScreen extends StatelessWidget {
                     summary:
                         'Planejamento e execução da campanha de marketing para o último trimestre.',
                     status: 'Planejamento',
+                    onAttach: () {},
+                    onDelete: () {},
+                    onEdit: () {},
                   ),
                 ],
               ),

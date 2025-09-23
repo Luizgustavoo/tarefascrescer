@@ -24,6 +24,15 @@ class _AddProjectModalState extends State<AddProjectModal> {
       TextEditingController();
   final TextEditingController _fimExecucaoController = TextEditingController();
 
+  final List<String> _situacoes = ['EM ANDAMENTO', 'PAUSADO', 'FINALIZADO'];
+  String? _selectedSituacao;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedSituacao = _situacoes.first;
+  }
+
   @override
   void dispose() {
     _dataApresentacaoController.dispose();
@@ -78,6 +87,28 @@ class _AddProjectModalState extends State<AddProjectModal> {
             const SizedBox(height: 24),
 
             _buildTextField(label: 'Nome Projeto/Emenda'),
+
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: DropdownButtonFormField<String>(
+                value: _selectedSituacao,
+                items: _situacoes.map((String situacao) {
+                  return DropdownMenuItem<String>(
+                    value: situacao,
+                    child: Text(situacao),
+                  );
+                }).toList(),
+                onChanged: (newValue) =>
+                    setState(() => _selectedSituacao = newValue),
+                decoration: const InputDecoration(
+                  labelText: 'Situação',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                ),
+              ),
+            ),
+
             _buildDatePickerField(
               label: 'Data Apresentação',
               controller: _dataApresentacaoController,
@@ -101,7 +132,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
             ),
             _buildCurrencyField(label: 'Total captado'),
 
-            // Período de Execução com dois campos de data
             const Text(
               "Período de Execução",
               style: TextStyle(color: Colors.grey, fontSize: 12),
@@ -142,7 +172,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   ),
                 ),
                 onPressed: () {
-                  // TODO: Implementar lógica de salvar
                   Navigator.of(context).pop();
                 },
                 child: const Text('Salvar Projeto'),
@@ -155,7 +184,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
     );
   }
 
-  // Widget helper para campos de texto simples e multiline
   Widget _buildTextField({required String label, int maxLines = 1}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -172,7 +200,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
     );
   }
 
-  // Widget helper para campos de data com DatePicker
   Widget _buildDatePickerField({
     required String label,
     required TextEditingController controller,
@@ -196,7 +223,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
     );
   }
 
-  // Widget helper para campos de valor monetário
   Widget _buildCurrencyField({required String label}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),

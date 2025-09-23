@@ -8,7 +8,6 @@ import 'package:tarefas_projetocrescer/screens/widgets/bottom_nav_bar.dart';
 
 class ProjectDetailsScreen extends StatefulWidget {
   final String projectName;
-
   const ProjectDetailsScreen({super.key, required this.projectName});
 
   @override
@@ -39,13 +38,12 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     ),
   ];
 
-
-  void _addTask(String description, String status) {
+  void _addTask(String description, String status, DateTime createdAt) {
     final newTask = Task(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       description: description,
       status: status,
-      createdAt: DateTime.now(),
+      createdAt: createdAt,
     );
     setState(() {
       _tasks.add(newTask);
@@ -70,7 +68,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     }
   }
 
-  // Função para abrir o modal de adicionar tarefa
   void _showAddTaskModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -78,6 +75,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+
       builder: (_) => AddTaskModal(onAddTask: _addTask),
     );
   }
@@ -91,7 +89,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
         elevation: 0,
         foregroundColor: Colors.black,
       ),
-      // Corpo agora é uma lista de tarefas
       body: ListView.builder(
         padding: const EdgeInsets.all(16.0),
         itemCount: _tasks.length,
@@ -111,9 +108,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     );
   }
 
-  // Widget para construir o card de cada tarefa
   Widget _buildTaskCard(Task task) {
-    // Cores baseadas no status da tarefa
     final statusColors = {
       'Pendente': Colors.orange,
       'Em Andamento': Colors.blue,
@@ -169,18 +164,8 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _actionButton(
-                  icon: Icons.edit_outlined,
-                  onPressed: () {
-                    /* TODO: Lógica de editar */
-                  },
-                ),
-                _actionButton(
-                  icon: Icons.delete_outline,
-                  onPressed: () {
-                    /* TODO: Lógica de remover */
-                  },
-                ),
+                _actionButton(icon: Icons.edit_outlined, onPressed: () {}),
+                _actionButton(icon: Icons.delete_outline, onPressed: () {}),
                 _actionButton(
                   icon: Icons.attach_file,
                   onPressed: () => _attachFile(task),
@@ -193,7 +178,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     );
   }
 
-  // Widget helper para os botões de ação
   Widget _actionButton({
     required IconData icon,
     required VoidCallback onPressed,
@@ -206,9 +190,9 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
   }
 }
 
-// Widget para o formulário dentro do Modal
 class AddTaskModal extends StatefulWidget {
-  final Function(String description, String status) onAddTask;
+  final Function(String description, String status, DateTime createdAt)
+  onAddTask;
   const AddTaskModal({super.key, required this.onAddTask});
 
   @override
@@ -217,6 +201,8 @@ class AddTaskModal extends StatefulWidget {
 
 class _AddTaskModalState extends State<AddTaskModal> {
   final _descriptionController = TextEditingController();
+  final _dateTimeController = TextEditingController();
+
   final List<String> _statuses = [
     'Pendente',
     'Em Andamento',
@@ -224,16 +210,66 @@ class _AddTaskModalState extends State<AddTaskModal> {
     'Cancelada',
   ];
   String? _selectedStatus;
+  DateTime? _selectedDateTime;
 
   @override
   void initState() {
     super.initState();
-    _selectedStatus = _statuses.first; // Define 'Pendente' como padrão
+    _selectedStatus = _statuses.first;
+
+    _selectedDateTime = DateTime.now();
+    _dateTimeController.text = DateFormat(
+      'dd/MM/yyyy HH:mm',
+    ).format(_selectedDateTime!);
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    _dateTimeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDateTime(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDateTime ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (pickedDate == null) return;
+
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_selectedDateTime ?? DateTime.now()),
+    );
+
+    if (pickedTime == null) return;
+
+    setState(() {
+      _selectedDateTime = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
+      _dateTimeController.text = DateFormat(
+        'dd/MM/yyyy HH:mm',
+      ).format(_selectedDateTime!);
+    });
   }
 
   void _submit() {
-    if (_descriptionController.text.isNotEmpty && _selectedStatus != null) {
-      widget.onAddTask(_descriptionController.text, _selectedStatus!);
+    if (_descriptionController.text.isNotEmpty &&
+        _selectedStatus != null &&
+        _selectedDateTime != null) {
+      widget.onAddTask(
+        _descriptionController.text,
+        _selectedStatus!,
+        _selectedDateTime!,
+      );
       Navigator.of(context).pop();
     }
   }
@@ -255,15 +291,19 @@ class _AddTaskModalState extends State<AddTaskModal> {
             'Nova Tarefa',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
-          ListTile(
-            leading: const Icon(Icons.calendar_today, color: Colors.grey),
-            title: const Text('Data e Hora'),
-            subtitle: Text(
-              DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+          TextFormField(
+            controller: _dateTimeController,
+            readOnly: true,
+            decoration: const InputDecoration(
+              labelText: 'Data e Hora',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
+              suffixIcon: Icon(Icons.calendar_today),
             ),
-            contentPadding: EdgeInsets.zero,
+            onTap: () => _selectDateTime(context),
           ),
 
           const SizedBox(height: 16),

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import '../project_details_screen.dart'; // Importe a nova tela
+import '../project_details_screen.dart';
 
 class ProjectCard extends StatelessWidget {
   final String projectName;
   final String creationDate;
   final String summary;
   final String status;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onAttach;
 
   const ProjectCard({
     super.key,
@@ -13,11 +16,13 @@ class ProjectCard extends StatelessWidget {
     required this.creationDate,
     required this.summary,
     required this.status,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onAttach,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Adicionamos o InkWell para dar o efeito de clique e a função onTap
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -30,7 +35,6 @@ class ProjectCard extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(16),
       child: Ink(
-        // Usamos Ink em vez de Container para o efeito de splash funcionar
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -45,7 +49,6 @@ class ProjectCard extends StatelessWidget {
           ],
         ),
         child: Column(
-          // O conteúdo do Column permanece o mesmo
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -101,9 +104,32 @@ class ProjectCard extends StatelessWidget {
               status,
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
+            // NOVA SEÇÃO DE BOTÕES
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _actionButton(icon: Icons.edit_outlined, onPressed: onEdit),
+                _actionButton(icon: Icons.delete_outline, onPressed: onDelete),
+                _actionButton(icon: Icons.attach_file, onPressed: onAttach),
+              ],
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, color: Colors.grey[700]),
+      splashRadius: 20,
+      constraints: const BoxConstraints(),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
     );
   }
 }
