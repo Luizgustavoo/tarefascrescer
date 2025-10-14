@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:tarefas_projetocrescer/models/project.dart';
 import '../project_details_screen.dart';
 
 class ProjectCard extends StatelessWidget {
-  final String projectName;
-  final String creationDate;
-  final String summary;
-  final String status;
+  final Project project;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onAttach;
+  final Color? backgroundColor;
 
   const ProjectCard({
     super.key,
-    required this.projectName,
-    required this.creationDate,
-    required this.summary,
-    required this.status,
+    required this.project,
     required this.onEdit,
     required this.onDelete,
     required this.onAttach,
+    this.backgroundColor,
   });
 
   @override
@@ -28,8 +25,7 @@ class ProjectCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                ProjectDetailsScreen(projectName: projectName),
+            builder: (context) => ProjectDetailsScreen(project: project),
           ),
         );
       },
@@ -37,7 +33,7 @@ class ProjectCard extends StatelessWidget {
       child: Ink(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: backgroundColor ?? Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -63,7 +59,7 @@ class ProjectCard extends StatelessWidget {
                         style: TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                       Text(
-                        projectName,
+                        project.name,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -83,14 +79,17 @@ class ProjectCard extends StatelessWidget {
               'Data de Criação',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
-            Text(creationDate, style: const TextStyle(fontSize: 14)),
+            Text(
+              project.dataApresentacao,
+              style: const TextStyle(fontSize: 14),
+            ),
             const SizedBox(height: 8),
             const Text(
               'Resumo:',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             Text(
-              summary,
+              project.contempla,
               style: const TextStyle(fontSize: 14),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -101,16 +100,15 @@ class ProjectCard extends StatelessWidget {
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             Text(
-              status,
+              project.status,
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
-            // NOVA SEÇÃO DE BOTÕES
             const Divider(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _actionButton(icon: Icons.edit_outlined, onPressed: onEdit),
-                _actionButton(icon: Icons.delete_outline, onPressed: onDelete),
+                _actionButton(icon: Icons.edit, onPressed: onEdit),
+                _actionButton(icon: Icons.delete, onPressed: onDelete),
                 _actionButton(icon: Icons.attach_file, onPressed: onAttach),
               ],
             ),
@@ -126,7 +124,7 @@ class ProjectCard extends StatelessWidget {
   }) {
     return IconButton(
       onPressed: onPressed,
-      icon: Icon(icon, color: Colors.grey[700]),
+      icon: Icon(icon, color: Colors.grey[500]),
       splashRadius: 20,
       constraints: const BoxConstraints(),
       padding: const EdgeInsets.symmetric(horizontal: 8),

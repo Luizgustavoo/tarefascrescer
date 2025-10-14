@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:tarefas_projetocrescer/screens/login_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:tarefas_projetocrescer/providers/auth_provider.dart';
+import 'package:tarefas_projetocrescer/providers/status_provider.dart';
+import 'package:tarefas_projetocrescer/screens/splash_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectStatusProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -16,11 +27,11 @@ class MyApp extends StatelessWidget {
       title: 'Project Manager',
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFF8F8FA),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6A3DE8)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0XFFD932CE)),
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      home: const SplashScreen(),
     );
   }
 }

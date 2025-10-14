@@ -1,141 +1,165 @@
 import 'package:flutter/material.dart';
-import 'widgets/add_project_modal.dart';
-import 'widgets/bottom_nav_bar.dart';
+import 'package:tarefas_projetocrescer/models/project.dart';
 import 'widgets/home_header.dart';
 import 'widgets/project_card.dart';
 import 'widgets/recent_project_card.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  void _showAddProjectModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return const AddProjectModal();
-      },
-    );
+  @override
+  HomeScreenState createState() => HomeScreenState();
+}
+
+class HomeScreenState extends State<HomeScreen> {
+  final List<Project> _allProjects = [
+    Project(
+      name: 'Desenvolvimento App Mobile',
+      status: 'Em Execução',
+      dataApresentacao: '15/02/2025',
+      dataAprovacao: '01/03/2025',
+      dataPrestacaoContas: '30/12/2025',
+      finalCaptacao: '30/05/2025',
+      totalCaptado: 50000.0,
+      inicioExecucao: '01/06/2025',
+      fimExecucao: '20/12/2025',
+      contempla:
+          'Jovens de 15 a 18 anos da comunidade local, oferecendo cursos de programação e design.',
+      observacoes: 'Maria Silva - (11) 98765-4321\nJoão Costa - Coordenador',
+      responsavelFiscal: 'Pola Adriana',
+    ),
+    Project(
+      name: 'Reforma do Escritório',
+      status: 'Concluído',
+      dataApresentacao: '10/01/2025',
+      dataAprovacao: '20/01/2025',
+      dataPrestacaoContas: '15/06/2025',
+      finalCaptacao: '28/02/2025',
+      totalCaptado: 120000.0,
+      inicioExecucao: '01/03/2025',
+      fimExecucao: '30/05/2025',
+      contempla:
+          'Todos os colaboradores da empresa, com um ambiente de trabalho mais moderno e ergonômico.',
+      observacoes: 'Carlos Pereira - (21) 91234-5678',
+      responsavelFiscal: 'Ana Paula',
+    ),
+  ];
+  late List<Project> _filteredProjects;
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredProjects = _allProjects;
+  }
+
+  void addProject(Project project) {
+    setState(() {
+      _allProjects.insert(0, project);
+      _filteredProjects = _allProjects;
+    });
+  }
+
+  void _filterProjects(String query) {
+    setState(() {
+      _filteredProjects = _allProjects
+          .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 24.0),
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
+        child: Column(
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.0),
-              child: HomeHeader(),
+            Container(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              padding: const EdgeInsets.all(24.0),
+              child: HomeHeader(onSearchChanged: _filterProjects),
             ),
-            const SizedBox(height: 24),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6A3DE8),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Text(
-                'Recentes movimentados',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 110,
+            Expanded(
               child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                children: const [
-                  RecentProjectCard(
-                    color: Color(0xFFE0F3FF),
-                    projectName: 'App de Vendas',
-                    creationDate: '10/09/2025',
-                    status: 'Em Andamento',
-                  ),
-                  SizedBox(width: 16),
-                  RecentProjectCard(
-                    color: Color(0xFFFFF0E0),
-                    projectName: 'Website Institucional',
-                    creationDate: '05/09/2025',
-                    status: 'Concluído',
-                  ),
-                  SizedBox(width: 16),
-                  RecentProjectCard(
-                    color: Color(0xFFE0F3FF),
-                    projectName: 'Sistema de RH',
-                    creationDate: '01/09/2025',
-                    status: 'Pausado',
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Text(
-                'Todos os Projetos',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
+                padding: const EdgeInsets.only(bottom: 24.0),
                 children: [
-                  ProjectCard(
-                    projectName: 'Desenvolvimento App Mobile',
-                    creationDate: '15/08/2025',
-                    summary:
-                        'Criação de um novo aplicativo para gerenciamento de tarefas e equipes...',
-                    status: 'Em Andamento',
-                    onAttach: () {},
-                    onDelete: () {},
-                    onEdit: () {},
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Container(
+                      height: 150,
+                      decoration: BoxDecoration(
+                        color: const Color(0XFFE134CA),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 16),
-                  ProjectCard(
-                    projectName: 'Reforma do Escritório',
-                    creationDate: '20/07/2025',
-                    summary:
-                        'Projeto de arquitetura e design de interiores para a nova sede da empresa.',
-                    status: 'Concluído',
-                    onAttach: () {},
-                    onDelete: () {},
-                    onEdit: () {},
+                  const SizedBox(height: 32),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      'Recentes movimentados',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 16),
-                  ProjectCard(
-                    projectName: 'Campanha de Marketing Q4',
-                    creationDate: '01/07/2025',
-                    summary:
-                        'Planejamento e execução da campanha de marketing para o último trimestre.',
-                    status: 'Planejamento',
-                    onAttach: () {},
-                    onDelete: () {},
-                    onEdit: () {},
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 110,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      children: const [
+                        RecentProjectCard(
+                          color: Color(0xFFE0F3FF),
+                          projectName: 'App de Vendas',
+                          creationDate: '10/09/2025',
+                          status: 'Em Andamento',
+                        ),
+                        SizedBox(width: 16),
+                        RecentProjectCard(
+                          color: Color(0xFFFFF0E0),
+                          projectName: 'Website Institucional',
+                          creationDate: '05/09/2025',
+                          status: 'Concluído',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      'Todos os Projetos',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListView.separated(
+                    itemCount: _filteredProjects.length,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      final project = _filteredProjects[index];
+                      final cardColor = index.isEven
+                          ? Colors.white
+                          : const Color(0xFFFFF1F3);
+                      return ProjectCard(
+                        project: project,
+
+                        backgroundColor: cardColor,
+                        onEdit: () {},
+                        onDelete: () {},
+                        onAttach: () {},
+                      );
+                    },
                   ),
                 ],
               ),
@@ -143,14 +167,6 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddProjectModal(context),
-        backgroundColor: const Color(0xFF6A3DE8),
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: const BottomNavBar(),
     );
   }
 }
