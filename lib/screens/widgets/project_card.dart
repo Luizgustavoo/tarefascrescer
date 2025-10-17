@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tarefas_projetocrescer/models/project.dart';
+import 'package:tarefas_projetocrescer/utils/formatters.dart';
 import '../project_details_screen.dart';
 
 class ProjectCard extends StatelessWidget {
@@ -69,7 +70,7 @@ class ProjectCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.keyboard_arrow_down),
+                const Icon(Icons.folder_open_outlined),
               ],
             ),
             const SizedBox(height: 8),
@@ -80,7 +81,7 @@ class ProjectCard extends StatelessWidget {
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             Text(
-              project.dataApresentacao,
+              Formatters.formatApiDate(project.presentationDate),
               style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 8),
@@ -89,19 +90,15 @@ class ProjectCard extends StatelessWidget {
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             Text(
-              project.contempla,
+              project.observations,
               style: const TextStyle(fontSize: 14),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Situação:',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
             Text(
-              project.status,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              'Situação: ${project.status?.name ?? 'N/A'}',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const Divider(height: 24),
             Row(

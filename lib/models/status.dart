@@ -1,3 +1,5 @@
+// FILE: lib/models/status.dart
+
 class Status {
   final int id;
   final String name;
@@ -6,13 +8,13 @@ class Status {
 
   factory Status.fromJson(Map<String, dynamic> json) {
     if (json['id'] == null || json['name'] == null) {
-      throw FormatException("JSON inválido para ProjectStatus");
+      throw FormatException("JSON inválido para Status");
     }
     return Status(id: json['id'], name: json['name']);
   }
 
-  // ADICIONADO: Sobrescrevendo o operador de igualdade (==) e o hashCode.
-  // Isso ensina ao Dart como comparar duas instâncias de ProjectStatus.
+  // ## CORREÇÃO CRUCIAL ##
+  // Esta parte ensina ao Dart que dois objetos Status são iguais se seus 'id's forem iguais.
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

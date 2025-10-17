@@ -7,4 +7,8 @@ class UserType {
   factory UserType.fromJson(Map<String, dynamic> json) {
     return UserType(id: json['id'], name: json['name']);
   }
+
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'name': name};
+  }
 }

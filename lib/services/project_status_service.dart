@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:tarefas_projetocrescer/models/status.dart';
 import 'api_service.dart';
 
-class StatusService {
+class ProjectStatusService {
   Future<List<Status>> list(String token) async {
     final url = Uri.parse('${ApiService.baseUrl}/project-statuses/list');
     try {

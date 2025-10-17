@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:tarefas_projetocrescer/providers/auth_provider.dart';
-import 'package:tarefas_projetocrescer/providers/status_provider.dart';
+import 'package:tarefas_projetocrescer/providers/project_provider.dart';
+import 'package:tarefas_projetocrescer/providers/project_status_provider.dart';
+import 'package:tarefas_projetocrescer/providers/task_provider.dart';
+import 'package:tarefas_projetocrescer/providers/task_status_provider.dart';
 import 'package:tarefas_projetocrescer/screens/splash_screen.dart';
 
 void main() {
@@ -11,6 +14,9 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProjectStatusProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectProvider()),
+        ChangeNotifierProvider(create: (_) => TaskStatusProvider()),
+        ChangeNotifierProvider(create: (_) => TaskProvider()),
       ],
       child: const MyApp(),
     ),

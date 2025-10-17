@@ -1,5 +1,6 @@
 // FILE: lib/providers/auth_provider.dart
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tarefas_projetocrescer/models/user.dart';
@@ -20,7 +21,6 @@ class AuthProvider with ChangeNotifier {
   String? get token => _token;
   bool get isAuthenticated => _token != null;
 
-  // Função de Login atualizada para salvar os dados
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -31,11 +31,10 @@ class AuthProvider with ChangeNotifier {
         email,
         password,
       );
-
       _user = loggedInUser;
       _token = receivedToken;
 
-      // Salva os dados no SharedPreferences
+      // Agora esta função salva o token E o usuário
       await _saveAuthData();
 
       _isLoading = false;
@@ -49,7 +48,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // NOVO: Função para tentar o login automático
+  // ALTERADO: Agora também carrega e recria o objeto User
   Future<bool> tryAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
     if (!prefs.containsKey('authToken')) {
@@ -57,31 +56,39 @@ class AuthProvider with ChangeNotifier {
     }
 
     _token = prefs.getString('authToken');
-    // Aqui você poderia também carregar os dados do usuário salvos, se desejar
-    // Ex: _user = User.fromJson(jsonDecode(prefs.getString('userData')));
+
+    // Carrega a string JSON do usuário, se existir
+    final userDataString = prefs.getString('userData');
+    if (userDataString != null) {
+      // Converte a string de volta para um Map e depois para um objeto User
+      _user = User.fromJson(jsonDecode(userDataString));
+    }
 
     notifyListeners();
-    return true;
+    return _token != null;
   }
 
-  // NOVO: Função de Logout atualizada para limpar os dados
+  // ALTERADO: Agora também limpa os dados do usuário do SharedPreferences
   Future<void> logout() async {
     _user = null;
     _token = null;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('authToken');
-    // await prefs.remove('userData'); // Se você salvar os dados do usuário também
+    await prefs.remove('userData'); // Limpa o usuário
 
     notifyListeners();
   }
 
-  // NOVO: Função privada para salvar os dados de autenticação
+  // ALTERADO: Agora salva o token e o usuário
   Future<void> _saveAuthData() async {
+    if (_token == null || _user == null) return;
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('authToken', _token!);
-    // Opcional: Salvar os dados do usuário como uma string JSON
-    // final userData = jsonEncode({'id': _user!.id, 'name': _user!.name, ...});
-    // await prefs.setString('userData', userData);
+
+    // Converte o objeto User para um Map e depois para uma string JSON para salvar
+    final userDataString = jsonEncode(_user!.toJson());
+    await prefs.setString('userData', userDataString);
   }
 }

@@ -1,10 +1,14 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:tarefas_projetocrescer/models/project.dart';
+import 'package:tarefas_projetocrescer/models/status.dart';
 import 'package:tarefas_projetocrescer/models/task.dart';
+import 'package:tarefas_projetocrescer/providers/auth_provider.dart';
+import 'package:tarefas_projetocrescer/providers/task_provider.dart';
+import 'package:tarefas_projetocrescer/screens/widgets/add_task_modal.dart';
+import 'package:tarefas_projetocrescer/utils/formatters.dart';
 
 class ProjectDetailsScreen extends StatefulWidget {
   final Project project;
@@ -15,40 +19,69 @@ class ProjectDetailsScreen extends StatefulWidget {
 }
 
 class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
-  final List<Task> _tasks = [
-    Task(
-      id: '1',
-      description:
-          'Reunião de alinhamento com a equipe de design para discutir os mockups iniciais.',
-      status: 'Concluída',
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    Task(
-      id: '2',
-      description:
-          'Desenvolver a tela de login e a lógica de autenticação com Firebase.',
-      status: 'Em Andamento',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    Task(
-      id: '3',
-      description: 'Configurar o ambiente de produção no servidor.',
-      status: 'Pendente',
-      createdAt: DateTime.now(),
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
 
-  void _addTask(String description, String status, DateTime createdAt) {
-    final newTask = Task(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      description: description,
-      status: status,
-      createdAt: createdAt,
-    );
-    setState(() {
-      _tasks.add(newTask);
-      _tasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    Future.microtask(() {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (widget.project.id != null) {
+        Provider.of<TaskProvider>(
+          context,
+          listen: false,
+        ).fetchTasks(widget.project.id!, authProvider);
+      }
     });
+  }
+
+  Future<void> _addTask(
+    String description,
+    Status status,
+    DateTime createdAt,
+    String color,
+  ) async {
+    final authProvider = context.read<AuthProvider>();
+    final taskProvider = context.read<TaskProvider>();
+
+    if (widget.project.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro: ID do projeto não encontrado.')),
+      );
+      return;
+    }
+
+    if (authProvider.user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro: Usuário não autenticado.')),
+      );
+      return;
+    }
+
+    final newTask = Task(
+
+      projectId: widget.project.id!,
+      statusId: status.id,
+      description: description,
+      scheduledAt: createdAt,
+      status: status,
+      color: color,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      createdBy: authProvider.user!.id,
+    );
+
+    final success = await taskProvider.registerTask(newTask, authProvider);
+
+    if (mounted && !success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            taskProvider.errorMessage ?? 'Falha ao cadastrar tarefa.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showAddTaskModal(BuildContext context) {
@@ -58,30 +91,13 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-
       builder: (_) => AddTaskModal(onAddTask: _addTask),
     );
   }
 
-  Future<void> _attachFile(Task task) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
-      setState(() {
-        task.attachments.add(File(image.path));
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Anexo adicionado à tarefa: ${task.description}'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final taskProvider = context.watch<TaskProvider>();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F8FA),
@@ -90,7 +106,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
       ),
       body: Column(
         children: [
-          _buildExpandableProjectSummary(widget.project),
+          _buildProjectSummaryHeader(widget.project),
 
           Padding(
             padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
@@ -106,18 +122,27 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _tasks.length,
-              itemBuilder: (context, index) {
-                final task = _tasks[index];
-                return _buildTaskCard(task);
-              },
-            ),
+            child: taskProvider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : taskProvider.errorMessage != null
+                ? Center(child: Text(taskProvider.errorMessage!))
+                : taskProvider.tasks.isEmpty
+                ? const Center(
+                    child: Text('Nenhuma tarefa cadastrada para este projeto.'),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 80.0),
+                    itemCount: taskProvider.tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = taskProvider.tasks[index];
+                      return _buildTaskCard(task);
+                    },
+                  ),
           ),
           SizedBox(height: 30),
         ],
       ),
+
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: FloatingActionButton(
@@ -131,144 +156,152 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     );
   }
 
-  Widget _buildExpandableProjectSummary(Project project) {
+  Widget _buildProjectSummaryHeader(Project project) {
     final currencyFormat = NumberFormat.simpleCurrency(locale: 'pt_BR');
 
-    // O ExpansionTile fica ótimo dentro de um Card para dar um contorno
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      clipBehavior: Clip
-          .antiAlias, // Garante que o conteúdo não vaze das bordas arredondadas
-      child: ExpansionTile(
-        backgroundColor: Colors.white,
-        collapsedBackgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-        title: Text(
-          project.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-        ),
-        subtitle: Text(
-          project.status,
-          style: TextStyle(
-            color: Theme.of(context).primaryColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        // Ícone que muda ao expandir/recolher
-        trailing: const Icon(Icons.keyboard_arrow_down),
-        // Os Filhos são o conteúdo que expande
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Divider(height: 1),
-                const SizedBox(height: 16),
-                _buildDetailRow(
-                  title1: 'Apresentação',
-                  value1: project.dataApresentacao,
-                  title2: 'Aprovação',
-                  value2: project.dataAprovacao,
-                ),
-                const SizedBox(height: 12),
-                _buildDetailRow(
-                  title1: 'Final Captação',
-                  value1: project.finalCaptacao,
-                  title2: 'Prestação Contas',
-                  value2: project.dataPrestacaoContas,
-                ),
-                const SizedBox(height: 12),
-                _buildDetailRow(
-                  title1: 'Responsável Fiscal',
-                  value1: project.responsavelFiscal,
-                  title2: 'Total Captado',
-                  value2: currencyFormat.format(project.totalCaptado),
-                ),
-                const Divider(height: 24),
-                _buildMultiLineDetail(
-                  title: 'Período de Execução',
-                  value: '${project.inicioExecucao} a ${project.fimExecucao}',
-                ),
-                const SizedBox(height: 12),
-                _buildMultiLineDetail(
-                  title: 'Contempla',
-                  value: project.contempla,
-                ),
-                const SizedBox(height: 12),
-                _buildMultiLineDetail(
-                  title: 'Observações',
-                  value: project.observacoes,
-                ),
-              ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(8, 0, 16, 20),
+      decoration: const BoxDecoration(
+        color: Color(0xFFE8E2F9),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 16),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildDetailItem(
+                          icon: Icons.flag_outlined,
+                          title: 'Status',
+                          value: project.status?.name ?? 'N/A',
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildDetailItem(
+                          icon: Icons.calendar_today,
+                          title: 'Data de Criação',
+                          value: Formatters.formatApiDate(
+                            project.presentationDate,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildDetailItem(
+                          icon: Icons.request_quote_outlined,
+                          title: 'Valor Apresentado',
+                          value: currencyFormat.format(project.presentedValue),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildDetailItem(
+                          icon: Icons.account_balance_wallet_outlined,
+                          title: 'Total Captado',
+                          value: Formatters.formatCurrency(
+                            project.totalCollected,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDetailItem(
+                    icon: Icons.person_outline,
+                    title: 'Responsável Fiscal',
+                    value: project.fiscalResponsible,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDetailItem(
+                    icon: Icons.timelapse_outlined,
+                    title: 'Período de Execução',
+                    value:
+                        '${Formatters.formatApiDate(project.executionStartDate)} a ${Formatters.formatApiDate(project.executionEndDate)}',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDetailItem(
+                    icon: Icons.comment_outlined,
+                    title: 'Observações',
+                    value: project.observations,
+                    isMultiLine: true,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // Widget auxiliar para as linhas com 2 colunas
-  Widget _buildDetailRow({
-    required String title1,
-    required String value1,
-    required String title2,
-    required String value2,
+  Widget _buildDetailItem({
+    required IconData icon,
+    required String title,
+    required String value,
+    bool isMultiLine = false,
   }) {
-    return Row(
-      children: [
-        Expanded(child: _buildDetailColumn(title1, value1)),
-        Expanded(child: _buildDetailColumn(title2, value2)),
-      ],
-    );
-  }
-
-  // Widget auxiliar para a coluna de detalhe (Título + Valor)
-  Widget _buildDetailColumn(String title, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
-  }
-
-  // Widget auxiliar para os campos de texto grandes
-  Widget _buildMultiLineDetail({required String title, required String value}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+        Row(
+          children: [
+            Icon(icon, size: 16, color: Colors.grey.shade700),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 14)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+          maxLines: isMultiLine ? 5 : 2,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
+  }
+
+  Color _colorFromHex(String hexColor) {
+    final hexCode = hexColor.replaceAll('#', '');
+    return Color(int.parse('FF$hexCode', radix: 16));
   }
 
   Widget _buildTaskCard(Task task) {
-    final statusColors = {
-      'Pendente': Colors.orange,
-      'Em Andamento': Colors.blue,
-      'Concluída': Colors.green,
-      'Cancelada': Colors.red,
-    };
+    // Lógica para decidir se o texto deve ser claro ou escuro
+    final cardColor = _colorFromHex(task.color);
+    final textColor = cardColor.computeLuminance() > 0.5
+        ? Colors.black87
+        : Colors.white;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      shadowColor: Colors.black.withOpacity(0.1),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -278,22 +311,25 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  DateFormat('dd/MM/yyyy \'às\' HH:mm').format(task.createdAt),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  DateFormat(
+                    'dd/MM/yyyy \'às\' HH:mm',
+                  ).format(task.scheduledAt),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
                 ),
+                // ALTERADO: A cor do container agora vem da tarefa
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 10,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColors[task.status] ?? Colors.grey,
-                    borderRadius: BorderRadius.circular(8),
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    task.status,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    task.status?.name ?? 'N/A',
+                    style: TextStyle(
+                      color: textColor, // Cor do texto adaptável
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -302,23 +338,17 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(task.description),
-            const SizedBox(height: 8),
-            if (task.attachments.isNotEmpty)
-              Text(
-                'Anexos: ${task.attachments.length}',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
+            Text(
+              task.description,
+              style: const TextStyle(fontSize: 15, height: 1.4),
+            ),
             const Divider(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _actionButton(icon: Icons.edit, onPressed: () {}),
-                _actionButton(icon: Icons.delete, onPressed: () {}),
-                _actionButton(
-                  icon: Icons.attach_file,
-                  onPressed: () => _attachFile(task),
-                ),
+                _actionButton(icon: Icons.edit_outlined, onPressed: () {}),
+                _actionButton(icon: Icons.delete_outline, onPressed: () {}),
+                _actionButton(icon: Icons.attach_file, onPressed: () => {}),
               ],
             ),
           ],
@@ -335,179 +365,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
       onPressed: onPressed,
       icon: Icon(icon, color: Colors.grey[500]),
       splashRadius: 20,
-    );
-  }
-}
-
-class AddTaskModal extends StatefulWidget {
-  final Function(String description, String status, DateTime createdAt)
-  onAddTask;
-  const AddTaskModal({super.key, required this.onAddTask});
-
-  @override
-  State<AddTaskModal> createState() => _AddTaskModalState();
-}
-
-class _AddTaskModalState extends State<AddTaskModal> {
-  final _descriptionController = TextEditingController();
-  final _dateTimeController = TextEditingController();
-
-  final List<String> _statuses = [
-    'Pendente',
-    'Em Andamento',
-    'Concluída',
-    'Cancelada',
-  ];
-  String? _selectedStatus;
-  DateTime? _selectedDateTime;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedStatus = _statuses.first;
-
-    _selectedDateTime = DateTime.now();
-    _dateTimeController.text = DateFormat(
-      'dd/MM/yyyy HH:mm',
-    ).format(_selectedDateTime!);
-  }
-
-  @override
-  void dispose() {
-    _descriptionController.dispose();
-    _dateTimeController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _selectDateTime(BuildContext context) async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDateTime ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-
-    if (pickedDate == null) return;
-
-    final TimeOfDay? pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_selectedDateTime ?? DateTime.now()),
-    );
-
-    if (pickedTime == null) return;
-
-    setState(() {
-      _selectedDateTime = DateTime(
-        pickedDate.year,
-        pickedDate.month,
-        pickedDate.day,
-        pickedTime.hour,
-        pickedTime.minute,
-      );
-      _dateTimeController.text = DateFormat(
-        'dd/MM/yyyy HH:mm',
-      ).format(_selectedDateTime!);
-    });
-  }
-
-  void _submit() {
-    if (_descriptionController.text.isNotEmpty &&
-        _selectedStatus != null &&
-        _selectedDateTime != null) {
-      widget.onAddTask(
-        _descriptionController.text,
-        _selectedStatus!,
-        _selectedDateTime!,
-      );
-      Navigator.of(context).pop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 24,
-        right: 24,
-        top: 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Nova Tarefa',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 24),
-
-          TextFormField(
-            controller: _dateTimeController,
-            readOnly: true,
-            decoration: const InputDecoration(
-              labelText: 'Data e Hora',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-              ),
-              suffixIcon: Icon(Icons.calendar_today),
-            ),
-            onTap: () => _selectDateTime(context),
-          ),
-
-          const SizedBox(height: 16),
-
-          DropdownButtonFormField<String>(
-            value: _selectedStatus,
-            items: _statuses.map((String status) {
-              return DropdownMenuItem<String>(
-                value: status,
-                child: Text(status),
-              );
-            }).toList(),
-            onChanged: (newValue) => setState(() => _selectedStatus = newValue),
-            decoration: const InputDecoration(
-              labelText: 'Situação',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          TextFormField(
-            controller: _descriptionController,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'Descrição',
-              alignLabelWithHint: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0XFFD932CE),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: _submit,
-              child: const Text('Salvar Tarefa'),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
     );
   }
 }

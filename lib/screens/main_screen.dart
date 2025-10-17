@@ -47,11 +47,7 @@ class _MainScreenState extends State<MainScreen> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         child: Container(
           color: const Color(0xFFF8F8FA),
-          child: AddProjectModal(
-            onProjectSaved: (newProject) {
-              _homeScreenKey.currentState?.addProject(newProject);
-            },
-          ),
+          child: AddProjectModal(),
         ),
       ),
     );

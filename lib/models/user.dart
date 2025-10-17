@@ -31,4 +31,14 @@ class User {
           : null,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'user_type': userType?.toJson(), // Chama o toJson do UserType
+    };
+  }
 }

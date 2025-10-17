@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:tarefas_projetocrescer/models/status.dart';
-import 'package:tarefas_projetocrescer/services/status_service.dart';
+import 'package:tarefas_projetocrescer/services/project_status_service.dart';
 
 import 'auth_provider.dart';
 
 class ProjectStatusProvider with ChangeNotifier {
-  final StatusService _service = StatusService();
+  final ProjectStatusService _service = ProjectStatusService();
 
   List<Status> _statuses = [];
   bool _isLoading = false;

@@ -1,17 +1,15 @@
-// FILE: lib/screens/widgets/add_project_modal.dart
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:tarefas_projetocrescer/models/status.dart';
-import 'package:tarefas_projetocrescer/providers/status_provider.dart';
+import 'package:tarefas_projetocrescer/providers/project_provider.dart';
+import 'package:tarefas_projetocrescer/providers/project_status_provider.dart';
+import 'package:tarefas_projetocrescer/screens/widgets/color_selector.dart';
 import '../../models/project.dart';
 import '../../providers/auth_provider.dart';
 
 class AddProjectModal extends StatefulWidget {
-  final Function(Project) onProjectSaved;
-  const AddProjectModal({super.key, required this.onProjectSaved});
+  const AddProjectModal({super.key});
 
   @override
   State<AddProjectModal> createState() => _AddProjectModalState();
@@ -29,20 +27,49 @@ class _AddProjectModalState extends State<AddProjectModal> {
   final _finalCaptacaoController = TextEditingController();
   final _inicioExecucaoController = TextEditingController();
   final _fimExecucaoController = TextEditingController();
+  final _valorApresentadoController = TextEditingController();
+  final _valorAprovadoController = TextEditingController();
+  final _totalColetadoController = TextEditingController();
+
+  DateTime? _presentationDateTime,
+      _approvalDateTime,
+      _accountabilityDateTime,
+      _collectionStartDateTime,
+      _collectionEndDateTime,
+      _executionStartDateTime,
+      _executionEndDateTime;
+
+  String _selectedColor = '#F8BBD0';
 
   Status? _selectedSituacao;
   static const String _addNewSituacaoKey = 'ADD_NEW_SITUACAO';
+  bool isInitialLoad = true;
 
   @override
   void initState() {
     super.initState();
+
     Future.microtask(() {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       Provider.of<ProjectStatusProvider>(
         context,
         listen: false,
-      ).fetchStatuses(authProvider);
+      ).fetchStatuses(Provider.of<AuthProvider>(context, listen: false));
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (isInitialLoad) {
+      final statusProvider = Provider.of<ProjectStatusProvider>(context);
+      if (statusProvider.statuses.isNotEmpty) {
+        setState(() {
+          _selectedSituacao ??= statusProvider.statuses.first;
+          isInitialLoad = false;
+        });
+      }
+    }
   }
 
   @override
@@ -57,12 +84,16 @@ class _AddProjectModalState extends State<AddProjectModal> {
     _finalCaptacaoController.dispose();
     _inicioExecucaoController.dispose();
     _fimExecucaoController.dispose();
+    _valorApresentadoController.dispose();
+    _valorAprovadoController.dispose();
+    _totalColetadoController.dispose();
     super.dispose();
   }
 
   Future<void> _selectDate(
     BuildContext context,
     TextEditingController controller,
+    void Function(DateTime) onDateSelected,
   ) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -71,6 +102,8 @@ class _AddProjectModalState extends State<AddProjectModal> {
       lastDate: DateTime(2101),
     );
     if (picked != null) {
+      onDateSelected(picked);
+
       setState(() {
         controller.text = DateFormat('dd/MM/yyyy').format(picked);
       });
@@ -121,19 +154,16 @@ class _AddProjectModalState extends State<AddProjectModal> {
       );
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      // Chama o provider para registrar. Ele retorna o novo objeto ProjectStatus.
       final Status? newStatus = await statusProvider.registerStatus(
         newSituacaoName,
         authProvider,
       );
 
-      // Se o cadastro funcionou, usa o objeto retornado para atualizar o estado local.
       if (newStatus != null && mounted) {
         setState(() {
           _selectedSituacao = newStatus;
         });
       } else if (mounted) {
-        // Mostra um erro se o cadastro falhar
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro ao cadastrar status.'),
@@ -144,40 +174,76 @@ class _AddProjectModalState extends State<AddProjectModal> {
     }
   }
 
-  void _saveProject() {
-    if (_formKey.currentState!.validate()) {
-      // Cria o objeto Project com os dados dos controllers
-      final newProject = Project(
-        name: _nomeController.text,
-        status:
-            _selectedSituacao?.name ??
-            'Não definido', // Pega o nome do objeto selecionado
-        responsavelFiscal: _responsavelFiscalController.text,
-        dataApresentacao: _dataApresentacaoController.text,
-        dataAprovacao: _dataAprovacaoController.text,
-        dataPrestacaoContas: _dataPrestacaoContasController.text,
-        finalCaptacao: _finalCaptacaoController.text,
-        totalCaptado: 0.0, // Adicione o controller de valor se necessário
-        inicioExecucao: _inicioExecucaoController.text,
-        fimExecucao: _fimExecucaoController.text,
-        contempla: '', // Adicione o controller de contempla se necessário
-        observacoes: _observacoesController.text,
-      );
+  Future<void> _saveProject() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-      widget.onProjectSaved(newProject);
-      Navigator.of(context).pop();
+    final authProvider = context.read<AuthProvider>();
+    final projectProvider = context.read<ProjectProvider>();
+
+    if (authProvider.user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro: Usuário não autenticado.')),
+      );
+      return;
+    }
+
+    String formatDateForApi(DateTime? dt) {
+      if (dt == null) return '';
+      return DateFormat('yyyy-MM-dd').format(dt);
+    }
+
+    final newProject = Project(
+      name: _nomeController.text,
+      fiscalResponsible: _responsavelFiscalController.text,
+      statusId: _selectedSituacao!.id,
+      status: _selectedSituacao,
+      presentationDate: formatDateForApi(_presentationDateTime),
+      presentedValue: double.tryParse(_valorApresentadoController.text) ?? 0.0,
+      approvalDate: formatDateForApi(_approvalDateTime),
+      approvedValue: double.tryParse(_valorAprovadoController.text),
+      accountabilityDate: formatDateForApi(_accountabilityDateTime),
+      collectionStartDate: formatDateForApi(_collectionStartDateTime),
+      collectionEndDate: formatDateForApi(_collectionEndDateTime),
+      totalCollected: double.tryParse(_totalColetadoController.text),
+      executionStartDate: formatDateForApi(_executionStartDateTime),
+      executionEndDate: formatDateForApi(_executionEndDateTime),
+      observations: _observacoesController.text,
+      createdBy: authProvider.user!.id,
+      color: _selectedColor,
+    );
+
+    final success = await projectProvider.registerProject(
+      newProject,
+      authProvider,
+    );
+
+    if (mounted) {
+      if (success) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Projeto cadastrado com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              projectProvider.errorMessage ?? 'Falha ao cadastrar projeto.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Escuta o provider para obter a lista de status e o estado de carregamento
     final statusProvider = context.watch<ProjectStatusProvider>();
-
-    // Lógica para definir o valor inicial do dropdown após o carregamento
-    if (_selectedSituacao == null && statusProvider.statuses.isNotEmpty) {
-      _selectedSituacao = statusProvider.statuses.first;
-    }
 
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.85,
@@ -210,6 +276,18 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   controller: _responsavelFiscalController,
                 ),
 
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: ColorSelector(
+                    initialColor: _selectedColor,
+                    onColorSelected: (newColor) {
+                      setState(() {
+                        _selectedColor = newColor;
+                      });
+                    },
+                  ),
+                ),
+
                 if (statusProvider.isLoading && statusProvider.statuses.isEmpty)
                   const Center(
                     child: Padding(
@@ -221,18 +299,9 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: DropdownButtonFormField<dynamic>(
-                      // ALTERADO: Lógica de seleção mais segura
-                      // Ele verifica se o item selecionado AINDA existe na lista. Se não, fica nulo.
-                      value:
-                          (_selectedSituacao != null &&
-                              statusProvider.statuses.contains(
-                                _selectedSituacao,
-                              ))
-                          ? _selectedSituacao
-                          : null,
-                      hint: const Text(
-                        'Selecione uma situação',
-                      ), // Mostra um texto quando nada está selecionado
+                      value: _selectedSituacao,
+                      isExpanded: true,
+                      hint: const Text('Carregando...'),
                       items: [
                         ...statusProvider.statuses.map((Status status) {
                           return DropdownMenuItem<dynamic>(
@@ -279,22 +348,27 @@ class _AddProjectModalState extends State<AddProjectModal> {
                 _buildDatePickerField(
                   label: 'Data Apresentação',
                   controller: _dataApresentacaoController,
+                  onDateSelected: (date) => _presentationDateTime = date,
                 ),
                 _buildDatePickerField(
                   label: 'Data Aprovação',
                   controller: _dataAprovacaoController,
+                  onDateSelected: (date) => _approvalDateTime = date,
                 ),
                 _buildDatePickerField(
                   label: 'Data Prestação de contas',
                   controller: _dataPrestacaoContasController,
+                  onDateSelected: (date) => _accountabilityDateTime = date,
                 ),
                 _buildDatePickerField(
                   label: 'Início Captação',
                   controller: _inicioCaptacaoController,
+                  onDateSelected: (date) => _collectionStartDateTime = date,
                 ),
                 _buildDatePickerField(
                   label: 'Final Captação',
                   controller: _finalCaptacaoController,
+                  onDateSelected: (date) => _collectionEndDateTime = date,
                 ),
 
                 const Text(
@@ -308,6 +382,8 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         label: 'Início',
                         controller: _inicioExecucaoController,
                         isDense: true,
+                        onDateSelected: (date) =>
+                            _executionStartDateTime = date,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -316,6 +392,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         label: 'Fim',
                         controller: _fimExecucaoController,
                         isDense: true,
+                        onDateSelected: (date) => _executionEndDateTime = date,
                       ),
                     ),
                   ],
@@ -351,7 +428,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
     );
   }
 
-  // Seus widgets helpers (com validator adicionado)
   Widget _buildTextField({
     required String label,
     int maxLines = 1,
@@ -378,6 +454,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
   Widget _buildDatePickerField({
     required String label,
     required TextEditingController controller,
+    required void Function(DateTime) onDateSelected,
     bool isDense = false,
   }) {
     return Padding(
@@ -393,7 +470,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
           suffixIcon: const Icon(Icons.calendar_today),
           isDense: isDense,
         ),
-        onTap: () => _selectDate(context, controller),
+        onTap: () => _selectDate(context, controller, onDateSelected),
         validator: (value) =>
             value == null || value.isEmpty ? 'Selecione uma data' : null,
       ),
