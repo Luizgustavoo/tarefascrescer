@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tarefas_projetocrescer/screens/calendar_screen.dart';
 import 'home_screen.dart';
 import 'finished_orders_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
@@ -23,7 +24,7 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _pages = [
       HomeScreen(key: _homeScreenKey),
-      const Center(child: Text('Página de Agendados')),
+      const CalendarScreen(),
       const FinishedOrdersScreen(),
       const Center(child: Text('Página de Pessoas')),
     ];
