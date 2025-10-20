@@ -7,8 +7,11 @@ import 'package:tarefas_projetocrescer/providers/project_status_provider.dart';
 import 'package:tarefas_projetocrescer/providers/task_provider.dart';
 import 'package:tarefas_projetocrescer/providers/task_status_provider.dart';
 import 'package:tarefas_projetocrescer/screens/splash_screen.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('pt_BR');
   runApp(
     MultiProvider(
       providers: [
