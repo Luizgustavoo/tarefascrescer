@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:tarefas_projetocrescer/models/project.dart';
 import 'package:tarefas_projetocrescer/models/status.dart';
 
 class Task {
@@ -12,6 +13,7 @@ class Task {
   final DateTime createdAt;
   final DateTime updatedAt;
   final Status? status;
+  final Project? project;
   final List<dynamic> attachments;
 
   Task({
@@ -25,6 +27,7 @@ class Task {
     required this.createdAt,
     required this.updatedAt,
     this.status,
+    this.project,
     this.attachments = const [],
   });
 
@@ -44,6 +47,9 @@ class Task {
       createdAt: parseDate(json['created_at']) ?? DateTime.now(),
       updatedAt: parseDate(json['updated_at']) ?? DateTime.now(),
       status: json['status'] != null ? Status.fromJson(json['status']) : null,
+      project: json['project'] != null
+          ? Project.fromJson(json['project'])
+          : null,
       attachments: json['attachments'] ?? [],
       createdBy: json['created_by'] ?? 0,
     );

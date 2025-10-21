@@ -22,9 +22,6 @@ class AuthService {
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         final data = responseData['data'];
-        print(data);
-        print(response.body);
-        print(responseData['data']);
         if (data == null || data['user'] == null || data['token'] == null) {
           throw Exception('Resposta da API inválida ou incompleta.');
         }
@@ -32,10 +29,8 @@ class AuthService {
         final User user = User.fromJson(data['user']);
         final String accessToken = data['token']['access_token'];
 
-        // 3. Retorna os dois objetos como uma tupla
         return (user, accessToken);
       } else {
-        // A lógica de tratamento de erro permanece a mesma
         String errorMessage = 'Falha na autenticação. Tente novamente.';
         if (response.body.isNotEmpty) {
           try {

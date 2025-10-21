@@ -31,6 +31,39 @@ class ProjectProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> updateProject(Project project, AuthProvider authProvider) async {
+    if (!authProvider.isAuthenticated) return false;
+
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final updatedProjectFromApi = await _service.update(
+        project,
+        authProvider.token!,
+      );
+
+      final completeUpdatedProject = updatedProjectFromApi.copyWith(
+        status: project.status,
+      );
+
+      final index = _projects.indexWhere(
+        (p) => p.id == completeUpdatedProject.id,
+      );
+      if (index != -1) {
+        _projects[index] = completeUpdatedProject;
+        notifyListeners();
+      } else {
+        await fetchProjects(authProvider);
+      }
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> registerProject(
     Project project,
     AuthProvider authProvider,

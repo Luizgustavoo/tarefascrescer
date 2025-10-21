@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tarefas_projetocrescer/models/project.dart';
 import 'package:tarefas_projetocrescer/providers/auth_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_provider.dart';
+import 'package:tarefas_projetocrescer/screens/widgets/add_project_modal.dart';
 import 'widgets/home_header.dart';
 import 'widgets/project_card.dart';
 import 'widgets/recent_project_card.dart';
 
 class HomeScreen extends StatefulWidget {
-  // A Key é opcional agora, pois não precisamos mais chamar o método 'addProject' de fora.
   const HomeScreen({super.key});
   @override
   HomeScreenState createState() => HomeScreenState();
@@ -17,8 +18,7 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Usamos Future.microtask para garantir que o context esteja disponível.
-    // Pedimos ao provider para carregar os projetos assim que a tela for construída.
+
     Future.microtask(() {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       Provider.of<ProjectProvider>(
@@ -28,15 +28,26 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // A função de filtro agora pode ser simplificada ou movida para o provider.
-  // Por enquanto, vamos filtrar a lista que recebemos do provider.
-  void _filterProjects(String query) {
-    // A lógica de filtro pode ser implementada aqui ou no provider no futuro.
+  void _filterProjects(String query) {}
+
+  void _showEditProjectModal(BuildContext context, Project projectToEdit) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        child: Container(
+          color: const Color(0xFFF8F8FA),
+
+          child: AddProjectModal(projectToEdit: projectToEdit),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Usamos 'watch' para que a tela reconstrua automaticamente quando a lista de projetos mudar.
     final projectProvider = context.watch<ProjectProvider>();
 
     return Material(
@@ -50,7 +61,6 @@ class HomeScreenState extends State<HomeScreen> {
               child: HomeHeader(onSearchChanged: _filterProjects),
             ),
             Expanded(
-              // Mostra um indicador de carregamento enquanto busca os dados
               child: projectProvider.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ListView(
@@ -115,7 +125,6 @@ class HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 16),
                         ListView.separated(
-                          // Usa a lista de projetos diretamente do provider
                           itemCount: projectProvider.projects.length,
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -130,7 +139,8 @@ class HomeScreenState extends State<HomeScreen> {
                             return ProjectCard(
                               project: project,
                               backgroundColor: cardColor,
-                              onEdit: () {},
+                              onEdit: () =>
+                                  _showEditProjectModal(context, project),
                               onDelete: () {},
                               onAttach: () {},
                             );

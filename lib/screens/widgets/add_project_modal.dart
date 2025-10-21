@@ -5,11 +5,14 @@ import 'package:tarefas_projetocrescer/models/status.dart';
 import 'package:tarefas_projetocrescer/providers/project_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_status_provider.dart';
 import 'package:tarefas_projetocrescer/screens/widgets/color_selector.dart';
+import 'package:tarefas_projetocrescer/utils/formatters.dart';
 import '../../models/project.dart';
 import '../../providers/auth_provider.dart';
 
 class AddProjectModal extends StatefulWidget {
-  const AddProjectModal({super.key});
+  final Project? projectToEdit;
+
+  const AddProjectModal({super.key, this.projectToEdit});
 
   @override
   State<AddProjectModal> createState() => _AddProjectModalState();
@@ -31,24 +34,57 @@ class _AddProjectModalState extends State<AddProjectModal> {
   final _valorAprovadoController = TextEditingController();
   final _totalColetadoController = TextEditingController();
 
-  DateTime? _presentationDateTime,
-      _approvalDateTime,
-      _accountabilityDateTime,
-      _collectionStartDateTime,
-      _collectionEndDateTime,
-      _executionStartDateTime,
-      _executionEndDateTime;
-
+  int? selectedSituacaoId;
   String _selectedColor = '#F8BBD0';
-
-  Status? _selectedSituacao;
+  Status? selectedSituacao;
   static const String _addNewSituacaoKey = 'ADD_NEW_SITUACAO';
   bool isInitialLoad = true;
+  bool get _isEditing => widget.projectToEdit != null;
 
   @override
   void initState() {
     super.initState();
+    _selectedColor = (_isEditing ? widget.projectToEdit!.color : '#F8BBD0')!;
+    if (_isEditing) {
+      final project = widget.projectToEdit!;
+      _nomeController.text = project.name;
+      _responsavelFiscalController.text = project.fiscalResponsible;
+      _observacoesController.text = project.observations;
 
+      _dataApresentacaoController.text = Formatters.formatApiDate(
+        project.presentationDate,
+      );
+      _dataAprovacaoController.text = Formatters.formatApiDate(
+        project.approvalDate,
+      );
+      _dataPrestacaoContasController.text = Formatters.formatApiDate(
+        project.accountabilityDate,
+      );
+      _inicioCaptacaoController.text = Formatters.formatApiDate(
+        project.collectionStartDate,
+      );
+      _finalCaptacaoController.text = Formatters.formatApiDate(
+        project.collectionEndDate,
+      );
+      _inicioExecucaoController.text = Formatters.formatApiDate(
+        project.executionStartDate,
+      );
+      _fimExecucaoController.text = Formatters.formatApiDate(
+        project.executionEndDate,
+      );
+
+      _valorApresentadoController.text = Formatters.formatCurrency(
+        project.presentedValue,
+      );
+      _valorAprovadoController.text = Formatters.formatCurrency(
+        project.approvedValue,
+      );
+      _totalColetadoController.text = Formatters.formatCurrency(
+        project.totalCollected,
+      );
+
+      selectedSituacaoId = project.statusId;
+    }
     Future.microtask(() {
       Provider.of<ProjectStatusProvider>(
         context,
@@ -65,7 +101,16 @@ class _AddProjectModalState extends State<AddProjectModal> {
       final statusProvider = Provider.of<ProjectStatusProvider>(context);
       if (statusProvider.statuses.isNotEmpty) {
         setState(() {
-          _selectedSituacao ??= statusProvider.statuses.first;
+          if (_isEditing && selectedSituacaoId != null) {
+            bool idExists = statusProvider.statuses.any(
+              (s) => s.id == selectedSituacaoId,
+            );
+            if (!idExists) {
+              selectedSituacaoId = statusProvider.statuses.first.id;
+            }
+          } else if (!_isEditing && selectedSituacaoId == null) {
+            selectedSituacaoId = statusProvider.statuses.first.id;
+          }
           isInitialLoad = false;
         });
       }
@@ -93,17 +138,20 @@ class _AddProjectModalState extends State<AddProjectModal> {
   Future<void> _selectDate(
     BuildContext context,
     TextEditingController controller,
-    void Function(DateTime) onDateSelected,
   ) async {
+    DateTime initial = DateTime.now();
+    try {
+      if (controller.text.isNotEmpty)
+        initial = DateFormat('dd/MM/yyyy').parseStrict(controller.text);
+    } catch (e) {}
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initial,
       firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
+      lastDate: DateTime(20101),
     );
     if (picked != null) {
-      onDateSelected(picked);
-
       setState(() {
         controller.text = DateFormat('dd/MM/yyyy').format(picked);
       });
@@ -153,7 +201,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
         listen: false,
       );
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
       final Status? newStatus = await statusProvider.registerStatus(
         newSituacaoName,
         authProvider,
@@ -161,7 +208,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
 
       if (newStatus != null && mounted) {
         setState(() {
-          _selectedSituacao = newStatus;
+          selectedSituacaoId = newStatus.id;
         });
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -174,13 +221,14 @@ class _AddProjectModalState extends State<AddProjectModal> {
     }
   }
 
-  Future<void> _saveProject() async {
+  Future<void> _saveOrUpdateProject() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     final authProvider = context.read<AuthProvider>();
     final projectProvider = context.read<ProjectProvider>();
+    final statusProvider = context.read<ProjectStatusProvider>();
 
     if (authProvider.user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -189,36 +237,64 @@ class _AddProjectModalState extends State<AddProjectModal> {
       return;
     }
 
-    String formatDateForApi(DateTime? dt) {
-      if (dt == null) return '';
-      return DateFormat('yyyy-MM-dd').format(dt);
+    Status? selectedStatusObject;
+    try {
+      selectedStatusObject = statusProvider.statuses.firstWhere(
+        (s) => s.id == selectedSituacaoId,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro: Status selecionado inválido.')),
+      );
+      return;
     }
-
-    final newProject = Project(
+    final projectData = Project(
+      id: _isEditing ? widget.projectToEdit!.id : null,
       name: _nomeController.text,
       fiscalResponsible: _responsavelFiscalController.text,
-      statusId: _selectedSituacao!.id,
-      status: _selectedSituacao,
-      presentationDate: formatDateForApi(_presentationDateTime),
-      presentedValue: double.tryParse(_valorApresentadoController.text) ?? 0.0,
-      approvalDate: formatDateForApi(_approvalDateTime),
-      approvedValue: double.tryParse(_valorAprovadoController.text),
-      accountabilityDate: formatDateForApi(_accountabilityDateTime),
-      collectionStartDate: formatDateForApi(_collectionStartDateTime),
-      collectionEndDate: formatDateForApi(_collectionEndDateTime),
-      totalCollected: double.tryParse(_totalColetadoController.text),
-      executionStartDate: formatDateForApi(_executionStartDateTime),
-      executionEndDate: formatDateForApi(_executionEndDateTime),
+      statusId: selectedSituacaoId!,
+      status: selectedStatusObject,
+      presentationDate: Formatters.formatDateForApiFromString(
+        _dataApresentacaoController.text,
+      ),
+      presentedValue:
+          Formatters.parseCurrency(_valorApresentadoController.text) ?? 0.0,
+      approvalDate: Formatters.formatDateForApiFromString(
+        _dataAprovacaoController.text,
+      ),
+      approvedValue: Formatters.parseCurrency(_valorAprovadoController.text),
+      accountabilityDate: Formatters.formatDateForApiFromString(
+        _dataPrestacaoContasController.text,
+      ),
+      collectionStartDate: Formatters.formatDateForApiFromString(
+        _inicioCaptacaoController.text,
+      ),
+      collectionEndDate: Formatters.formatDateForApiFromString(
+        _finalCaptacaoController.text,
+      ),
+      totalCollected: Formatters.parseCurrency(_totalColetadoController.text),
+      executionStartDate: Formatters.formatDateForApiFromString(
+        _inicioExecucaoController.text,
+      ),
+      executionEndDate: Formatters.formatDateForApiFromString(
+        _fimExecucaoController.text,
+      ),
       observations: _observacoesController.text,
-      createdBy: authProvider.user!.id,
+      createdBy: _isEditing
+          ? widget.projectToEdit!.createdBy
+          : authProvider.user!.id,
       color: _selectedColor,
     );
 
-    final success = await projectProvider.registerProject(
-      newProject,
-      authProvider,
-    );
-
+    bool success;
+    if (_isEditing) {
+      success = await projectProvider.updateProject(projectData, authProvider);
+    } else {
+      success = await projectProvider.registerProject(
+        projectData,
+        authProvider,
+      );
+    }
     if (mounted) {
       if (success) {
         Navigator.of(context).pop();
@@ -261,9 +337,12 @@ class _AddProjectModalState extends State<AddProjectModal> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Novo Projeto',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                Text(
+                  _isEditing ? 'Editar Projeto' : 'Novo Projeto',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -299,13 +378,13 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: DropdownButtonFormField<dynamic>(
-                      value: _selectedSituacao,
+                      value: selectedSituacaoId,
+                      hint: const Text('Selecione uma situação'),
                       isExpanded: true,
-                      hint: const Text('Carregando...'),
                       items: [
                         ...statusProvider.statuses.map((Status status) {
                           return DropdownMenuItem<dynamic>(
-                            value: status,
+                            value: status.id,
                             child: Text(status.name),
                           );
                         }),
@@ -331,7 +410,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         if (newValue == _addNewSituacaoKey) {
                           _showAddSituacaoDialog();
                         } else if (newValue is Status) {
-                          setState(() => _selectedSituacao = newValue);
+                          setState(() => selectedSituacao = newValue);
                         }
                       },
                       decoration: const InputDecoration(
@@ -348,27 +427,22 @@ class _AddProjectModalState extends State<AddProjectModal> {
                 _buildDatePickerField(
                   label: 'Data Apresentação',
                   controller: _dataApresentacaoController,
-                  onDateSelected: (date) => _presentationDateTime = date,
                 ),
                 _buildDatePickerField(
                   label: 'Data Aprovação',
                   controller: _dataAprovacaoController,
-                  onDateSelected: (date) => _approvalDateTime = date,
                 ),
                 _buildDatePickerField(
                   label: 'Data Prestação de contas',
                   controller: _dataPrestacaoContasController,
-                  onDateSelected: (date) => _accountabilityDateTime = date,
                 ),
                 _buildDatePickerField(
                   label: 'Início Captação',
                   controller: _inicioCaptacaoController,
-                  onDateSelected: (date) => _collectionStartDateTime = date,
                 ),
                 _buildDatePickerField(
                   label: 'Final Captação',
                   controller: _finalCaptacaoController,
-                  onDateSelected: (date) => _collectionEndDateTime = date,
                 ),
 
                 const Text(
@@ -382,8 +456,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         label: 'Início',
                         controller: _inicioExecucaoController,
                         isDense: true,
-                        onDateSelected: (date) =>
-                            _executionStartDateTime = date,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -392,7 +464,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         label: 'Fim',
                         controller: _fimExecucaoController,
                         isDense: true,
-                        onDateSelected: (date) => _executionEndDateTime = date,
                       ),
                     ),
                   ],
@@ -416,8 +487,10 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: _saveProject,
-                    child: const Text('Salvar Projeto'),
+                    onPressed: _saveOrUpdateProject,
+                    child: Text(
+                      _isEditing ? 'Salvar Alterações' : 'Salvar Projeto',
+                    ),
                   ),
                 ),
               ],
@@ -454,7 +527,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
   Widget _buildDatePickerField({
     required String label,
     required TextEditingController controller,
-    required void Function(DateTime) onDateSelected,
     bool isDense = false,
   }) {
     return Padding(
@@ -470,9 +542,18 @@ class _AddProjectModalState extends State<AddProjectModal> {
           suffixIcon: const Icon(Icons.calendar_today),
           isDense: isDense,
         ),
-        onTap: () => _selectDate(context, controller, onDateSelected),
-        validator: (value) =>
-            value == null || value.isEmpty ? 'Selecione uma data' : null,
+
+        onTap: () => _selectDate(context, controller),
+        validator: (v) {
+          if (v == null || v.isEmpty) return 'Selecione uma data';
+
+          try {
+            DateFormat('dd/MM/yyyy').parseStrict(v);
+          } catch (e) {
+            return 'Formato inválido (dd/MM/yyyy)';
+          }
+          return null;
+        },
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:tarefas_projetocrescer/models/status.dart';
+import 'package:tarefas_projetocrescer/models/task.dart';
 import 'package:tarefas_projetocrescer/providers/auth_provider.dart';
 import 'package:tarefas_projetocrescer/providers/task_status_provider.dart';
 import 'package:tarefas_projetocrescer/screens/widgets/color_selector.dart';
@@ -12,9 +13,17 @@ class AddTaskModal extends StatefulWidget {
     Status status,
     DateTime createdAt,
     String color,
-  )
+  )?
   onAddTask;
-  const AddTaskModal({super.key, required this.onAddTask});
+
+  final Function(Task updatedTask)? onUpdateTask;
+  final Task? taskToEdit;
+  const AddTaskModal({
+    super.key,
+    this.onAddTask,
+    this.onUpdateTask,
+    this.taskToEdit,
+  });
 
   @override
   State<AddTaskModal> createState() => _AddTaskModalState();
@@ -29,17 +38,27 @@ class _AddTaskModalState extends State<AddTaskModal> {
   DateTime? _selectedDateTime;
   bool _isInitialLoad = true;
   static const String _addNewStatusKey = 'ADD_NEW_TASK_STATUS';
-
   String _selectedColor = '#F8BBD0';
+
+  bool get _isEditing => widget.taskToEdit != null;
 
   @override
   void initState() {
     super.initState();
-    _selectedDateTime = DateTime.now();
-    _dateTimeController.text = DateFormat(
-      'dd/MM/yyyy HH:mm',
-    ).format(_selectedDateTime!);
-
+    if (_isEditing) {
+      final task = widget.taskToEdit!;
+      _descriptionController.text = task.description;
+      _selectedDateTime = task.scheduledAt;
+      _dateTimeController.text = DateFormat(
+        'dd/MM/yyyy HH:mm',
+      ).format(_selectedDateTime!);
+      _selectedColor = task.color;
+    } else {
+      _selectedDateTime = DateTime.now();
+      _dateTimeController.text = DateFormat(
+        'dd/MM/yyyy HH:mm',
+      ).format(_selectedDateTime!);
+    }
     Future.microtask(() {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       Provider.of<TaskStatusProvider>(
@@ -56,7 +75,14 @@ class _AddTaskModalState extends State<AddTaskModal> {
       final statusProvider = Provider.of<TaskStatusProvider>(context);
       if (statusProvider.statuses.isNotEmpty) {
         setState(() {
-          _selectedStatus ??= statusProvider.statuses.first;
+          if (_isEditing) {
+            _selectedStatus = statusProvider.statuses.firstWhere(
+              (s) => s.id == widget.taskToEdit!.statusId,
+              orElse: () => statusProvider.statuses.first,
+            );
+          } else {
+            _selectedStatus ??= statusProvider.statuses.first;
+          }
           _isInitialLoad = false;
         });
       }
@@ -166,12 +192,23 @@ class _AddTaskModalState extends State<AddTaskModal> {
   void _submit() {
     if (_formKey.currentState!.validate()) {
       if (_selectedStatus != null && _selectedDateTime != null) {
-        widget.onAddTask(
-          _descriptionController.text,
-          _selectedStatus!,
-          _selectedDateTime!,
-          _selectedColor,
-        );
+        if (_isEditing) {
+          final updatedTask = widget.taskToEdit!.copyWith(
+            description: _descriptionController.text,
+            statusId: _selectedStatus!.id,
+            status: _selectedStatus,
+            scheduledAt: _selectedDateTime!,
+            color: _selectedColor,
+          );
+          widget.onUpdateTask!(updatedTask);
+        } else {
+          widget.onAddTask!(
+            _descriptionController.text,
+            _selectedStatus!,
+            _selectedDateTime!,
+            _selectedColor,
+          );
+        }
         Navigator.of(context).pop();
       }
     }
@@ -194,9 +231,9 @@ class _AddTaskModalState extends State<AddTaskModal> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Nova Tarefa',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            Text(
+              _isEditing ? 'Editar Tarefa' : 'Nova Tarefa',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
 
@@ -303,7 +340,7 @@ class _AddTaskModalState extends State<AddTaskModal> {
                   ),
                 ),
                 onPressed: _submit,
-                child: const Text('Salvar Tarefa'),
+                child: Text(_isEditing ? 'Salvar Alterações' : 'Salvar Tarefa'),
               ),
             ),
             const SizedBox(height: 24),

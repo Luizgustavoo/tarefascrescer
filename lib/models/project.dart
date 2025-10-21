@@ -20,7 +20,7 @@ class Project {
   final String executionStartDate;
   final String executionEndDate;
   final String observations;
-  final String color;
+  final String? color;
 
   Project({
     this.id,

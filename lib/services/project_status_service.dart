@@ -44,8 +44,6 @@ class ProjectStatusService {
       if (response.statusCode == 201 || response.statusCode == 200) {
         final Map<String, dynamic> decodedBody = jsonDecode(response.body);
 
-        print('Resposta do cadastro de status: $decodedBody');
-
         if (decodedBody.containsKey('data') &&
             decodedBody['data'] is Map<String, dynamic>) {
           return Status.fromJson(decodedBody['data']);

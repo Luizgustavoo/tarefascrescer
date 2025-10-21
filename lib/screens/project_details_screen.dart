@@ -58,7 +58,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     }
 
     final newTask = Task(
-
       projectId: widget.project.id!,
       statusId: status.id,
       description: description,
@@ -84,6 +83,31 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     }
   }
 
+  Future<void> _updateTask(Task updatedTask) async {
+    final authProvider = context.read<AuthProvider>();
+    final taskProvider = context.read<TaskProvider>();
+
+    final success = await taskProvider.updateTask(updatedTask, authProvider);
+
+    if (mounted && !success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            taskProvider.errorMessage ?? 'Falha ao atualizar tarefa.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else if (mounted && success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tarefa atualizada!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
   void _showAddTaskModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -92,6 +116,16 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => AddTaskModal(onAddTask: _addTask),
+    );
+  }
+
+  void _showEditTaskModal(BuildContext context, Task taskToEdit) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+
+      builder: (_) =>
+          AddTaskModal(taskToEdit: taskToEdit, onUpdateTask: _updateTask),
     );
   }
 
@@ -291,7 +325,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
   }
 
   Widget _buildTaskCard(Task task) {
-    // Lógica para decidir se o texto deve ser claro ou escuro
     final cardColor = _colorFromHex(task.color);
     final textColor = cardColor.computeLuminance() > 0.5
         ? Colors.black87
@@ -316,7 +349,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                   ).format(task.scheduledAt),
                   style: TextStyle(color: Colors.grey[600], fontSize: 13),
                 ),
-                // ALTERADO: A cor do container agora vem da tarefa
+
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -329,7 +362,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                   child: Text(
                     task.status?.name ?? 'N/A',
                     style: TextStyle(
-                      color: textColor, // Cor do texto adaptável
+                      color: textColor,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -346,7 +379,10 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _actionButton(icon: Icons.edit_outlined, onPressed: () {}),
+                _actionButton(
+                  icon: Icons.edit_outlined,
+                  onPressed: () => _showEditTaskModal(context, task),
+                ),
                 _actionButton(icon: Icons.delete_outline, onPressed: () {}),
                 _actionButton(icon: Icons.attach_file, onPressed: () => {}),
               ],
