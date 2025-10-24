@@ -1,5 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tarefas_projetocrescer/models/project.dart';
+import 'package:tarefas_projetocrescer/models/project_file_model.dart';
+import 'package:tarefas_projetocrescer/screens/widgets/pdf_viewer_screen.dart';
 import 'package:tarefas_projetocrescer/utils/formatters.dart';
 import '../project_details_screen.dart';
 
@@ -18,6 +21,57 @@ class ProjectCard extends StatelessWidget {
     required this.onAttach,
     this.backgroundColor,
   });
+
+  // --- Funções de Visualização (Adicionadas aqui) ---
+
+  void _showImageDialog(BuildContext context, String imageUrl, String heroTag) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16.0),
+        child: Hero(
+          tag: heroTag,
+          child: InteractiveViewer(
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              placeholder: (context, url) =>
+                  const Center(child: CircularProgressIndicator()),
+              errorWidget: (context, url, error) =>
+                  const Icon(Icons.error, color: Colors.red),
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPdfViewer(BuildContext context, ProjectFile file, String heroTag) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PdfViewerScreen(
+          fileUrl: file.fileUrl,
+          heroTag: heroTag,
+          fileName: file.originalName,
+        ),
+      ),
+    );
+  }
+
+  void _openFile(BuildContext context, ProjectFile file) {
+    final String heroTag = 'projectFileCardHero-${file.id}'; // Tag única
+    if (file.fileType == 'image') {
+      _showImageDialog(context, file.fileUrl, heroTag);
+    } else if (file.extension == 'pdf') {
+      _showPdfViewer(context, file, heroTag);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tipo de arquivo não suportado.')),
+      );
+    }
+  }
+  // --- Fim das Funções de Visualização ---
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +127,75 @@ class ProjectCard extends StatelessWidget {
                 const Icon(Icons.folder_open_outlined),
               ],
             ),
+            // ## SEÇÃO DE ANEXOS ADICIONADA ##
+            if (project.files.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Divider(),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Anexos (${project.files.length}):",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height:
+                          32, // Altura fixa para a lista horizontal de chips
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: project.files.length,
+                        itemBuilder: (ctx, index) {
+                          final file = project.files[index];
+                          final heroTag = 'projectFileCardHero-${file.id}';
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6.0),
+                            child: InkWell(
+                              onTap: () => _openFile(context, file),
+                              child: Hero(
+                                tag: heroTag,
+                                child: Chip(
+                                  avatar: Icon(
+                                    file.icon,
+                                    size: 14,
+                                    color: Theme.of(context).primaryColor,
+                                  ),
+                                  label: Text(
+                                    file.originalName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey.shade800,
+                                    ),
+                                  ),
+                                  backgroundColor: Colors.grey.shade200,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 0,
+                                  ),
+                                  labelPadding: const EdgeInsets.only(
+                                    left: 4,
+                                    right: 6,
+                                  ),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            // --- Fim da Seção de Anexos ---
             const SizedBox(height: 8),
             const Divider(),
             const SizedBox(height: 8),

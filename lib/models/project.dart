@@ -1,3 +1,4 @@
+import 'package:tarefas_projetocrescer/models/project_file_model.dart';
 import 'package:tarefas_projetocrescer/models/status.dart';
 import 'package:tarefas_projetocrescer/models/user.dart';
 
@@ -21,6 +22,7 @@ class Project {
   final String executionEndDate;
   final String observations;
   final String? color;
+  final List<ProjectFile> files;
 
   Project({
     this.id,
@@ -42,6 +44,7 @@ class Project {
     required this.executionEndDate,
     required this.observations,
     required this.color,
+    this.files = const [],
   });
 
   factory Project.fromJson(Map<String, dynamic> json) {
@@ -50,6 +53,15 @@ class Project {
       if (value is String) return double.tryParse(value);
       if (value is num) return value.toDouble();
       return null;
+    }
+
+    List<ProjectFile> parseFiles(dynamic fileList) {
+      if (fileList != null && fileList is List) {
+        return fileList
+            .map((fileJson) => ProjectFile.fromJson(fileJson))
+            .toList();
+      }
+      return [];
     }
 
     return Project(
@@ -75,6 +87,7 @@ class Project {
       executionEndDate: json['execution_end_date'] ?? '',
       observations: json['observations'] ?? '',
       color: json['color'] ?? '#FFFFFF',
+      files: parseFiles(json['files']),
     );
   }
 
@@ -119,6 +132,7 @@ class Project {
     String? executionEndDate,
     String? observations,
     String? color,
+    List<ProjectFile>? files,
   }) {
     return Project(
       id: id ?? this.id,
@@ -140,6 +154,7 @@ class Project {
       executionEndDate: executionEndDate ?? this.executionEndDate,
       observations: observations ?? this.observations,
       color: color ?? this.color,
+      files: files ?? this.files,
     );
   }
 }

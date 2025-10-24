@@ -31,6 +31,27 @@ class ProjectProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> deleteProject(int projectId, AuthProvider authProvider) async {
+    if (!authProvider.isAuthenticated) return false;
+
+    _errorMessage = null;
+
+    notifyListeners();
+
+    try {
+      await _service.delete(projectId, authProvider.token!);
+
+      _projects.removeWhere((project) => project.id == projectId);
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateProject(Project project, AuthProvider authProvider) async {
     if (!authProvider.isAuthenticated) return false;
 

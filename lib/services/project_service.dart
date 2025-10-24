@@ -28,6 +28,33 @@ class ProjectService {
     }
   }
 
+  Future<void> delete(int projectId, String token) async {
+    final url = Uri.parse('${ApiService.baseUrl}/projects/delete/$projectId');
+    try {
+      final response = await http.delete(
+        url,
+        headers: ApiService.getHeaders(authToken: token),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return;
+      } else {
+        String errorMessage = 'Falha ao deletar o projeto.';
+        if (response.body.isNotEmpty) {
+          try {
+            final errorData = jsonDecode(response.body);
+            if (errorData['message'] != null) {
+              errorMessage = errorData['message'];
+            }
+          } catch (_) {}
+        }
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<Project> update(Project project, String token) async {
     if (project.id == null) {
       throw Exception("ID do projeto inválido para atualização.");

@@ -3,8 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:tarefas_projetocrescer/providers/auth_provider.dart';
 import 'package:tarefas_projetocrescer/providers/calendar_provider.dart';
+import 'package:tarefas_projetocrescer/providers/graph_provider.dart';
+import 'package:tarefas_projetocrescer/providers/project_file_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_status_provider.dart';
+import 'package:tarefas_projetocrescer/providers/recent_task_provider.dart';
+import 'package:tarefas_projetocrescer/providers/task_file_provider.dart';
 import 'package:tarefas_projetocrescer/providers/task_provider.dart';
 import 'package:tarefas_projetocrescer/providers/task_status_provider.dart';
 import 'package:tarefas_projetocrescer/screens/splash_screen.dart';
@@ -22,6 +26,10 @@ void main() async {
         ChangeNotifierProvider(create: (_) => TaskStatusProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
         ChangeNotifierProvider(create: (_) => CalendarProvider()),
+        ChangeNotifierProvider(create: (_) => GraphProvider()),
+        ChangeNotifierProvider(create: (_) => RecentTaskProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectFileProvider()),
+        ChangeNotifierProvider(create: (_) => TaskFileProvider()),
       ],
       child: const MyApp(),
     ),

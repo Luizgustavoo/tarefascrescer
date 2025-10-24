@@ -35,6 +35,31 @@ class TaskService {
     }
   }
 
+  Future<List<Task>> list(int projectId, String token) async {
+    final url = Uri.parse('${ApiService.baseUrl}/tasks/list/$projectId');
+    try {
+      final response = await http.get(
+        url,
+        headers: ApiService.getHeaders(authToken: token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> decodedBody = jsonDecode(response.body);
+        if (decodedBody.containsKey('data') && decodedBody['data'] is List) {
+          final List<dynamic> dataList = decodedBody['data'];
+          return dataList.map((json) => Task.fromJson(json)).toList();
+        } else {
+          final List<dynamic> dataList = jsonDecode(response.body);
+          return dataList.map((json) => Task.fromJson(json)).toList();
+        }
+      } else {
+        throw Exception('Falha ao carregar a lista de tarefas.');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<Task> update(Task task, String token) async {
     if (task.id == 0) {
       throw Exception("ID da tarefa inválido para atualização.");
@@ -65,25 +90,27 @@ class TaskService {
     }
   }
 
-  Future<List<Task>> list(int projectId, String token) async {
-    final url = Uri.parse('${ApiService.baseUrl}/tasks/list/$projectId');
+  Future<void> delete(int taskId, String token) async {
+    final url = Uri.parse('${ApiService.baseUrl}/tasks/delete/$taskId');
     try {
-      final response = await http.get(
+      final response = await http.delete(
         url,
         headers: ApiService.getHeaders(authToken: token),
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> decodedBody = jsonDecode(response.body);
-        if (decodedBody.containsKey('data') && decodedBody['data'] is List) {
-          final List<dynamic> dataList = decodedBody['data'];
-          return dataList.map((json) => Task.fromJson(json)).toList();
-        } else {
-          final List<dynamic> dataList = jsonDecode(response.body);
-          return dataList.map((json) => Task.fromJson(json)).toList();
-        }
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return;
       } else {
-        throw Exception('Falha ao carregar a lista de tarefas.');
+        String errorMessage = 'Falha ao deletar a tarefa.';
+        if (response.body.isNotEmpty) {
+          try {
+            final errorData = jsonDecode(response.body);
+            if (errorData['message'] != null) {
+              errorMessage = errorData['message'];
+            }
+          } catch (_) {}
+        }
+        throw Exception(errorMessage);
       }
     } catch (e) {
       rethrow;

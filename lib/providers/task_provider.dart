@@ -31,6 +31,27 @@ class TaskProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> deleteTask(int taskId, AuthProvider authProvider) async {
+    if (!authProvider.isAuthenticated) return false;
+
+    _errorMessage = null;
+
+    notifyListeners();
+
+    try {
+      await _service.delete(taskId, authProvider.token!);
+
+      _tasks.removeWhere((task) => task.id == taskId);
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateTask(Task task, AuthProvider authProvider) async {
     if (!authProvider.isAuthenticated) return false;
 
