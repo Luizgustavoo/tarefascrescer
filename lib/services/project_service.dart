@@ -90,6 +90,8 @@ class ProjectService {
 
   Future<Project> register(Project project, String token) async {
     final url = Uri.parse('${ApiService.baseUrl}/projects/register');
+
+    final data = jsonEncode(project.toJson());
     try {
       final response = await http.post(
         url,

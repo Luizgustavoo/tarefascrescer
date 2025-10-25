@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:tarefas_projetocrescer/models/project_category_model.dart';
 import 'package:tarefas_projetocrescer/models/status.dart';
+import 'package:tarefas_projetocrescer/providers/project_category_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_status_provider.dart';
 import 'package:tarefas_projetocrescer/screens/widgets/color_selector.dart';
@@ -35,9 +37,12 @@ class _AddProjectModalState extends State<AddProjectModal> {
   final _totalColetadoController = TextEditingController();
 
   int? selectedSituacaoId;
+  int? selectedCategoryId;
   String _selectedColor = '#F8BBD0';
   Status? selectedSituacao;
+  Status? selectedCategory;
   static const String _addNewSituacaoKey = 'ADD_NEW_SITUACAO';
+  static const String _addNewCategoryKey = 'ADD_NEW_CATEGORIA';
   bool isInitialLoad = true;
   bool get _isEditing => widget.projectToEdit != null;
 
@@ -90,6 +95,11 @@ class _AddProjectModalState extends State<AddProjectModal> {
         context,
         listen: false,
       ).fetchStatuses(Provider.of<AuthProvider>(context, listen: false));
+
+      Provider.of<ProjectCategoryProvidser>(
+        context,
+        listen: false,
+      ).fetchCategories(Provider.of<AuthProvider>(context, listen: false));
     });
   }
 
@@ -228,6 +238,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
 
     final authProvider = context.read<AuthProvider>();
     final projectProvider = context.read<ProjectProvider>();
+    final projectCategoryProvider = context.read<ProjectCategoryProvidser>();
     final statusProvider = context.read<ProjectStatusProvider>();
 
     if (authProvider.user == null) {
@@ -238,6 +249,8 @@ class _AddProjectModalState extends State<AddProjectModal> {
     }
 
     Status? selectedStatusObject;
+    ProjectCategoryModel? selectedCategoryObject;
+
     try {
       selectedStatusObject = statusProvider.statuses.firstWhere(
         (s) => s.id == selectedSituacaoId,
@@ -248,12 +261,27 @@ class _AddProjectModalState extends State<AddProjectModal> {
       );
       return;
     }
+
+    try {
+      selectedCategoryObject = projectCategoryProvider.categories.firstWhere(
+        (c) => c.id == selectedCategoryId,
+      );
+    } catch (e) {
+      print(e.toString());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro: Categoria selecionada inválida.')),
+      );
+      return;
+    }
+
     final projectData = Project(
       id: _isEditing ? widget.projectToEdit!.id : null,
       name: _nomeController.text,
       fiscalResponsible: _responsavelFiscalController.text,
       statusId: selectedSituacaoId!,
+      categoryId: selectedCategoryId!,
       status: selectedStatusObject,
+      category: selectedCategoryObject,
       presentationDate: Formatters.formatDateForApiFromString(
         _dataApresentacaoController.text,
       ),
@@ -320,6 +348,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
   @override
   Widget build(BuildContext context) {
     final statusProvider = context.watch<ProjectStatusProvider>();
+    final categoryProvider = context.watch<ProjectCategoryProvidser>();
 
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.85,
@@ -345,6 +374,67 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                //aqui categoria
+                if (categoryProvider.isLoading &&
+                    categoryProvider.categories.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: DropdownButtonFormField<dynamic>(
+                      initialValue: selectedCategoryId,
+                      hint: const Text('Selecione uma categoria'),
+                      isExpanded: true,
+                      items: [
+                        ...categoryProvider.categories.map((
+                          ProjectCategoryModel c,
+                        ) {
+                          return DropdownMenuItem<dynamic>(
+                            value: c.id,
+                            child: Text(c.name),
+                          );
+                        }),
+                        const DropdownMenuItem<dynamic>(
+                          enabled: false,
+                          child: Divider(),
+                        ),
+                        DropdownMenuItem<dynamic>(
+                          value: _addNewCategoryKey,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.add,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('Cadastrar nova...'),
+                            ],
+                          ),
+                        ),
+                      ],
+                      onChanged: (newValue) {
+                        if (newValue == _addNewCategoryKey) {
+                          //_showAddSituacaoDialog();
+                        } else if (newValue is Status) {
+                          setState(() => selectedCategory = newValue);
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Categoria',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        ),
+                      ),
+                      validator: (value) =>
+                          value == null ? 'Selecione uma categoria' : null,
+                    ),
+                  ),
 
                 _buildTextField(
                   label: 'Nome Projeto/Emenda',
@@ -378,7 +468,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: DropdownButtonFormField<dynamic>(
-                      value: selectedSituacaoId,
+                      initialValue: selectedSituacaoId,
                       hint: const Text('Selecione uma situação'),
                       isExpanded: true,
                       items: [

@@ -1,3 +1,4 @@
+import 'package:tarefas_projetocrescer/models/project_category_model.dart';
 import 'package:tarefas_projetocrescer/models/project_file_model.dart';
 import 'package:tarefas_projetocrescer/models/status.dart';
 import 'package:tarefas_projetocrescer/models/user.dart';
@@ -7,7 +8,9 @@ class Project {
   final String name;
   final String fiscalResponsible;
   final Status? status;
+  final ProjectCategoryModel? category;
   final int statusId;
+  final int categoryId;
   final int createdBy;
   final User? createdByUser;
   final String presentationDate;
@@ -30,6 +33,7 @@ class Project {
     required this.fiscalResponsible,
     this.status,
     required this.statusId,
+    required this.categoryId,
     required this.createdBy,
     this.createdByUser,
     required this.presentationDate,
@@ -44,6 +48,7 @@ class Project {
     required this.executionEndDate,
     required this.observations,
     required this.color,
+    required this.category,
     this.files = const [],
   });
 
@@ -70,7 +75,11 @@ class Project {
       name: json['name'] ?? '',
       fiscalResponsible: json['fiscal_responsible'] ?? '',
       status: json['status'] != null ? Status.fromJson(json['status']) : null,
+      category: json['category'] != null
+          ? ProjectCategoryModel.fromJson(json['category'])
+          : null,
       statusId: json['status_id'] ?? 0,
+      categoryId: json['project_category_id'] ?? 0,
       createdBy: json['created_by'] ?? 0,
       createdByUser: json['create_by'] != null
           ? User.fromJson(json['create_by'])
@@ -96,6 +105,7 @@ class Project {
       'name': name,
       'fiscal_responsible': fiscalResponsible,
       'status_id': statusId,
+      'project_category_id': categoryId,
       'presentation_date': presentationDate,
       'presented_value': presentedValue,
       'approval_date': approvalDate,
@@ -117,7 +127,9 @@ class Project {
     String? name,
     String? fiscalResponsible,
     Status? status,
+    ProjectCategoryModel? category,
     int? statusId,
+    int? categoryId,
     int? createdBy,
     User? createdByUser,
     String? presentationDate,
@@ -139,7 +151,9 @@ class Project {
       name: name ?? this.name,
       fiscalResponsible: fiscalResponsible ?? this.fiscalResponsible,
       status: status ?? this.status,
+      category: category ?? this.category,
       statusId: statusId ?? this.statusId,
+      categoryId: categoryId ?? this.categoryId,
       createdBy: createdBy ?? this.createdBy,
       createdByUser: createdByUser ?? this.createdByUser,
       presentationDate: presentationDate ?? this.presentationDate,

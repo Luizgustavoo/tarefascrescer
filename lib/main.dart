@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:tarefas_projetocrescer/providers/auth_provider.dart';
 import 'package:tarefas_projetocrescer/providers/calendar_provider.dart';
 import 'package:tarefas_projetocrescer/providers/graph_provider.dart';
+import 'package:tarefas_projetocrescer/providers/project_category_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_file_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_status_provider.dart';
@@ -22,6 +23,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProjectStatusProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectCategoryProvidser()),
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => TaskStatusProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
