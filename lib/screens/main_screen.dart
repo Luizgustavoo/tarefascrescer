@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tarefas_projetocrescer/screens/calendar_screen.dart';
 import 'home_screen.dart';
-import 'finished_orders_screen.dart';
+import 'category_filter_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/add_project_modal.dart';
 
@@ -25,7 +25,7 @@ class _MainScreenState extends State<MainScreen> {
     _pages = [
       HomeScreen(key: _homeScreenKey),
       const CalendarScreen(),
-      const FinishedOrdersScreen(),
+      const CategoryFilterScreen(),
       const Center(child: Text('Página de Pessoas')),
     ];
   }

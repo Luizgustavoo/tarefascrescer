@@ -28,6 +28,40 @@ class ProjectService {
     }
   }
 
+  // NOVO: Lista projetos filtrando por STATUS
+  Future<List<Project>> listByStatus(int statusId, String token) async {
+    final url = Uri.parse(
+      '${ApiService.baseUrl}/projects/list-by-status/$statusId',
+    );
+    try {
+      final response = await http.get(
+        url,
+        headers: ApiService.getHeaders(authToken: token),
+      );
+
+      if (response.statusCode == 200) {
+        // A API retorna a lista diretamente (sem 'data')
+        final List<dynamic> dataList = jsonDecode(response.body);
+        return dataList.map((json) => Project.fromJson(json)).toList();
+
+        /* // Se a API retornar aninhado em 'data':
+        final Map<String, dynamic> decodedBody = jsonDecode(response.body);
+        if (decodedBody.containsKey('data') && decodedBody['data'] is List) {
+          final List<dynamic> dataList = decodedBody['data'];
+          return dataList.map((json) => Project.fromJson(json)).toList();
+        } else {
+          throw Exception('Formato de resposta da API de projetos inesperado.');
+        }
+        */
+      } else {
+        throw Exception('Falha ao carregar a lista de projetos por status.');
+      }
+    } catch (e) {
+      print("Erro em ProjectService.listByStatus: $e");
+      rethrow;
+    }
+  }
+
   Future<void> delete(int projectId, String token) async {
     final url = Uri.parse('${ApiService.baseUrl}/projects/delete/$projectId');
     try {
@@ -90,8 +124,6 @@ class ProjectService {
 
   Future<Project> register(Project project, String token) async {
     final url = Uri.parse('${ApiService.baseUrl}/projects/register');
-
-    final data = jsonEncode(project.toJson());
     try {
       final response = await http.post(
         url,

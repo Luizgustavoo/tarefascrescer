@@ -1,8 +1,8 @@
 class ApiService {
-  // static const String baseUrl =
-  //     'http://api.tasks.projetocrescerarapongas.org.br/api';
+  static const String baseUrl =
+      'http://api.tasks.projetocrescerarapongas.org.br/api';
 
-  static const String baseUrl = 'http://192.168.0.103:8000/api';
+  // static const String baseUrl = 'http://192.168.0.103:8000/api';
 
   // Helper que cria os headers. Se um token for fornecido, ele o adiciona.
   static Map<String, String> getHeaders({String? authToken}) {

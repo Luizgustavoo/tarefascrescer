@@ -1,16 +1,14 @@
-// FILE: lib/models/status.dart
-
 import 'package:tarefas_projetocrescer/models/project.dart';
 
 class ProjectCategoryModel {
   final int id;
   final String name;
-  final List<Project>? project;
+  final List<Project> projects;
 
   ProjectCategoryModel({
     required this.id,
     required this.name,
-    required this.project,
+    required this.projects,
   });
 
   factory ProjectCategoryModel.fromJson(Map<String, dynamic> json) {
@@ -24,13 +22,15 @@ class ProjectCategoryModel {
             .map((projectJson) => Project.fromJson(projectJson))
             .toList();
       }
-      return [];
+      return []; // Retorna lista vazia se 'projects' for nulo
     }
 
+    // ## CORREÇÃO AQUI ##
     return ProjectCategoryModel(
       id: json['id'],
       name: json['name'],
-      project: null,
+      // Chama a função de parse para a chave 'projects' da API
+      projects: parseProjects(json['projects']),
     );
   }
 
@@ -38,8 +38,18 @@ class ProjectCategoryModel {
     return {'id': id, 'name': name};
   }
 
-  // ## CORREÇÃO CRUCIAL ##
-  // Esta parte ensina ao Dart que dois objetos Status são iguais se seus 'id's forem iguais.
+  ProjectCategoryModel copyWith({
+    int? id,
+    String? name,
+    List<Project>? projects,
+  }) {
+    return ProjectCategoryModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      projects: projects ?? this.projects,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

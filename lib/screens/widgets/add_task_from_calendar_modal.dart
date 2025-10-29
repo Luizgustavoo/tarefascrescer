@@ -81,13 +81,14 @@ class _AddTaskFromCalendarModalState extends State<AddTaskFromCalendarModal> {
     if (_isInitialLoad) {
       final statusProvider = Provider.of<TaskStatusProvider>(context);
       final projectProvider = Provider.of<ProjectProvider>(context);
-
       setState(() {
-        if (statusProvider.statuses.isNotEmpty) {
-          _selectedStatus ??= statusProvider.statuses.first;
+        if (statusProvider.statuses.isNotEmpty && _selectedStatus == null) {
+          _selectedStatus = statusProvider.statuses.first;
         }
-        if (projectProvider.projects.isNotEmpty) {
-          _selectedProject ??= projectProvider.projects.first;
+
+        // Define o projeto inicial
+        if (projectProvider.projects.isNotEmpty && _selectedProject == null) {
+          _selectedProject = projectProvider.projects.first;
         }
         _isInitialLoad = false;
       });
@@ -234,34 +235,61 @@ class _AddTaskFromCalendarModalState extends State<AddTaskFromCalendarModal> {
               const SizedBox(height: 16),
 
               if (statusProvider.isLoading && statusProvider.statuses.isEmpty)
-                const Center(child: CircularProgressIndicator())
-              else
-                DropdownButtonFormField<dynamic>(
-                  value:
-                      (_selectedStatus != null &&
-                          statusProvider.statuses.contains(_selectedStatus))
-                      ? _selectedStatus
-                      : null,
-                  hint: const Text('Selecione uma situação'),
-                  isExpanded: true,
-                  items: [/* ... (itens + 'Cadastrar nova...') ... */],
-                  onChanged: (newValue) {
-                    if (newValue == _addNewStatusKey) {
-                      _showAddTaskStatusDialog();
-                    } else if (newValue is Status) {
-                      setState(() => _selectedStatus = newValue);
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Situação',
-                    border: const OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(),
                   ),
-                  validator: (value) =>
-                      value == null ? 'Selecione uma situação' : null,
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: DropdownButtonFormField<dynamic>(
+                    hint: const Text('Selecione uma situação'),
+                    isExpanded: true,
+                    items: [
+                      ...statusProvider.statuses.map((Status status) {
+                        return DropdownMenuItem<dynamic>(
+                          value: status.id,
+                          child: Text(status.name),
+                        );
+                      }),
+                      const DropdownMenuItem<dynamic>(
+                        enabled: false,
+                        child: Divider(),
+                      ),
+                      DropdownMenuItem<dynamic>(
+                        value: _addNewStatusKey,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.add,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Cadastrar nova...'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (newValue) {
+                      if (newValue == _addNewStatusKey) {
+                        _showAddTaskStatusDialog();
+                      } else if (newValue is Status) {
+                        setState(() => _selectedStatus = newValue);
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Situação',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value == null ? 'Selecione uma situação' : null,
+                  ),
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 5),
 
               ColorSelector(
                 initialColor: _selectedColor,

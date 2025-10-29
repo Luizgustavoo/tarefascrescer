@@ -1,16 +1,18 @@
-import 'package:tarefas_projetocrescer/models/project_category_model.dart';
-import 'package:tarefas_projetocrescer/models/project_file_model.dart';
+// FILE: lib/models/project_model.dart
+
 import 'package:tarefas_projetocrescer/models/status.dart';
 import 'package:tarefas_projetocrescer/models/user.dart';
+import 'package:tarefas_projetocrescer/models/project_file_model.dart';
+import 'package:tarefas_projetocrescer/models/project_category_model.dart'; // Importe a Categoria
 
 class Project {
   final int? id;
   final String name;
   final String fiscalResponsible;
   final Status? status;
-  final ProjectCategoryModel? category;
   final int statusId;
-  final int categoryId;
+  final ProjectCategoryModel? category; // Adicione o objeto Categoria
+  final int categoryId; // Mantenha o ID para o cadastro
   final int createdBy;
   final User? createdByUser;
   final String presentationDate;
@@ -24,7 +26,7 @@ class Project {
   final String executionStartDate;
   final String executionEndDate;
   final String observations;
-  final String? color;
+  final String color;
   final List<ProjectFile> files;
 
   Project({
@@ -33,6 +35,7 @@ class Project {
     required this.fiscalResponsible,
     this.status,
     required this.statusId,
+    this.category,
     required this.categoryId,
     required this.createdBy,
     this.createdByUser,
@@ -48,7 +51,6 @@ class Project {
     required this.executionEndDate,
     required this.observations,
     required this.color,
-    required this.category,
     this.files = const [],
   });
 
@@ -69,21 +71,35 @@ class Project {
       return [];
     }
 
+    // ## CORREÇÃO PRINCIPAL AQUI ##
+    // Lógica segura para extrair o usuário de 'created_by'
+    User? userObject;
+    int createdById = 0;
+    // O JSON da API agora envia o objeto User dentro de 'created_by'
+    if (json['created_by'] != null &&
+        json['created_by'] is Map<String, dynamic>) {
+      userObject = User.fromJson(json['created_by']);
+      createdById = userObject.id;
+    } else if (json['created_by'] is int) {
+      // Fallback caso a API envie só o ID
+      createdById = json['created_by'];
+    }
+
     return Project(
       id: json['id'],
-
       name: json['name'] ?? '',
       fiscalResponsible: json['fiscal_responsible'] ?? '',
       status: json['status'] != null ? Status.fromJson(json['status']) : null,
+      statusId: json['status_id'] ?? 0,
+
+      // Usa os valores extraídos com segurança
+      createdBy: createdById,
+      createdByUser: userObject,
+
       category: json['category'] != null
           ? ProjectCategoryModel.fromJson(json['category'])
           : null,
-      statusId: json['status_id'] ?? 0,
       categoryId: json['project_category_id'] ?? 0,
-      createdBy: json['created_by'] ?? 0,
-      createdByUser: json['create_by'] != null
-          ? User.fromJson(json['create_by'])
-          : null,
       presentationDate: json['presentation_date'] ?? '',
       presentedValue: parseToDouble(json['presented_value']) ?? 0.0,
       approvalDate: json['approval_date'] ?? '',
@@ -100,12 +116,14 @@ class Project {
     );
   }
 
+  // O toJson permanece o mesmo
   Map<String, dynamic> toJson() {
     return {
       'name': name,
       'fiscal_responsible': fiscalResponsible,
       'status_id': statusId,
-      'project_category_id': categoryId,
+      'project_category_id':
+          categoryId, // Certifique-se de que o model no add_project_modal envie isso
       'presentation_date': presentationDate,
       'presented_value': presentedValue,
       'approval_date': approvalDate,
@@ -122,13 +140,14 @@ class Project {
     };
   }
 
+  // copyWith (deve ser atualizado)
   Project copyWith({
     int? id,
     String? name,
     String? fiscalResponsible,
-    Status? status,
-    ProjectCategoryModel? category,
+    Status? status, // Espera um objeto Status?
     int? statusId,
+    ProjectCategoryModel? category, // Espera um objeto ProjectCategoryModel?
     int? categoryId,
     int? createdBy,
     User? createdByUser,
@@ -150,9 +169,9 @@ class Project {
       id: id ?? this.id,
       name: name ?? this.name,
       fiscalResponsible: fiscalResponsible ?? this.fiscalResponsible,
-      status: status ?? this.status,
-      category: category ?? this.category,
+      status: status ?? this.status, // Usa o objeto diretamente
       statusId: statusId ?? this.statusId,
+      category: category ?? this.category, // Usa o objeto diretamente
       categoryId: categoryId ?? this.categoryId,
       createdBy: createdBy ?? this.createdBy,
       createdByUser: createdByUser ?? this.createdByUser,
@@ -171,4 +190,11 @@ class Project {
       files: files ?? this.files,
     );
   }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Project && runtimeType == other.runtimeType && id == other.id; // Compara pelo ID
+
+  @override
+  int get hashCode => id.hashCode;
 }

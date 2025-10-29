@@ -70,16 +70,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final taskProvider = context.read<TaskProvider>();
     final calendarProvider = context.read<CalendarProvider>();
 
-    // REMOVIDO: A lógica de pegar o primeiro projeto não é mais necessária
-    // final projects = context.read<ProjectProvider>().projects;
-    // if (projects.isEmpty) { /* ... */ return; }
-    // final int exampleProjectId = projects.first.id!;
-
     if (authProvider.user == null) {
-      /* ... */
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Usuário não autenticado.')),
+        );
+      }
       return;
     }
-
     final newTask = Task(
       id: 0,
       projectId: projectId, // Usa o projectId vindo do modal

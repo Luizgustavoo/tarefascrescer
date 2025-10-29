@@ -6,6 +6,7 @@ import 'package:tarefas_projetocrescer/providers/calendar_provider.dart';
 import 'package:tarefas_projetocrescer/providers/graph_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_category_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_file_provider.dart';
+import 'package:tarefas_projetocrescer/providers/project_filter_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_status_provider.dart';
 import 'package:tarefas_projetocrescer/providers/recent_task_provider.dart';
@@ -23,7 +24,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProjectStatusProvider()),
-        ChangeNotifierProvider(create: (_) => ProjectCategoryProvidser()),
+        ChangeNotifierProvider(create: (_) => ProjectCategoryProvider()),
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => TaskStatusProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
@@ -32,6 +33,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => RecentTaskProvider()),
         ChangeNotifierProvider(create: (_) => ProjectFileProvider()),
         ChangeNotifierProvider(create: (_) => TaskFileProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectFilterProvider()),
       ],
       child: const MyApp(),
     ),

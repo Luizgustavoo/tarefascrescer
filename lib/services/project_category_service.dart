@@ -30,9 +30,68 @@ class ProjectCategoryService {
     }
   }
 
-  Future<void> delete(int projectCategoryId, String token) async {
+  Future<ProjectCategoryModel> register(String name, String token) async {
+    final url = Uri.parse('${ApiService.baseUrl}/project-categories/register');
+    try {
+      final response = await http.post(
+        url,
+        headers: ApiService.getHeaders(authToken: token),
+        body: jsonEncode({'name': name}),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final Map<String, dynamic> decodedBody = jsonDecode(response.body);
+
+        if (decodedBody.containsKey('data')) {
+          return ProjectCategoryModel.fromJson(decodedBody['data']);
+        } else {
+          return ProjectCategoryModel.fromJson(decodedBody);
+        }
+      } else {
+        throw Exception('Falha ao cadastrar a nova categoria de projeto.');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<ProjectCategoryModel> update(
+    int categoryId,
+    String newName,
+    String token,
+  ) async {
     final url = Uri.parse(
-      '${ApiService.baseUrl}/project-categories/delete/$projectCategoryId',
+      '${ApiService.baseUrl}/project-categories/update/$categoryId',
+    );
+    try {
+      final response = await http.put(
+        url,
+        headers: ApiService.getHeaders(authToken: token),
+        body: jsonEncode({'name': newName}),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> decodedBody = jsonDecode(response.body);
+
+        if (decodedBody.containsKey('data')) {
+          return ProjectCategoryModel.fromJson(decodedBody['data']);
+        } else {
+          return ProjectCategoryModel.fromJson(decodedBody);
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(
+          errorData['message'] ?? 'Falha ao atualizar a categoria.',
+        );
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> delete(int categoryId, String token) async {
+    final url = Uri.parse(
+      '${ApiService.baseUrl}/project-categories/delete/$categoryId',
     );
     try {
       final response = await http.delete(
@@ -53,31 +112,6 @@ class ProjectCategoryService {
           } catch (_) {}
         }
         throw Exception(errorMessage);
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<ProjectCategoryModel> register(String name, String token) async {
-    final url = Uri.parse('${ApiService.baseUrl}/project-categories/register');
-    try {
-      final response = await http.post(
-        url,
-        headers: ApiService.getHeaders(authToken: token),
-        body: jsonEncode({'name': name}),
-      );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final Map<String, dynamic> decodedBody = jsonDecode(response.body);
-
-        if (decodedBody.containsKey('data')) {
-          return ProjectCategoryModel.fromJson(decodedBody['data']);
-        } else {
-          return ProjectCategoryModel.fromJson(decodedBody);
-        }
-      } else {
-        throw Exception('Falha ao cadastrar a nova categoria de projeto.');
       }
     } catch (e) {
       rethrow;

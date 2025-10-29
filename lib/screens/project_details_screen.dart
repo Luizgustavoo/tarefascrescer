@@ -594,38 +594,84 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 4.0,
-                      children: taskFiles
-                          .map(
-                            (file) => InkWell(
+                    SizedBox(
+                      height: 32,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: taskFiles.length,
+                        itemBuilder: (ctx, index) {
+                          final file = taskFiles[index];
+                          final heroTag = 'taskFileCardHero-${file.id}';
+                          return Padding(
+                            padding: EdgeInsetsGeometry.only(right: 6.0),
+                            child: InkWell(
                               onTap: () => _openFile(file),
-                              child: Chip(
-                                avatar: Icon(
-                                  file.icon,
-                                  size: 16,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                                label: Text(
-                                  file.originalName,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade800,
+                              child: Hero(
+                                tag: heroTag,
+                                child: Chip(
+                                  avatar: Icon(
+                                    file.icon,
+                                    size: 14,
+                                    color: Theme.of(context).primaryColor,
                                   ),
-                                ),
-                                backgroundColor: Colors.grey.shade200,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
+                                  label: Text(
+                                    file.originalName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey.shade800,
+                                    ),
+                                  ),
+                                  backgroundColor: Colors.grey.shade200,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 0,
+                                  ),
+                                  labelPadding: const EdgeInsets.only(
+                                    left: 4,
+                                    right: 6,
+                                  ),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
                               ),
                             ),
-                          )
-                          .toList(),
+                          );
+                        },
+                      ),
                     ),
+
+                    // Wrap(
+                    //   spacing: 8.0,
+                    //   runSpacing: 4.0,
+                    //   children: taskFiles
+                    //       .map(
+                    //         (file) => InkWell(
+                    //           onTap: () => _openFile(file),
+                    //           child: Chip(
+                    //             avatar: Icon(
+                    //               file.icon,
+                    //               size: 16,
+                    //               color: Theme.of(context).primaryColor,
+                    //             ),
+                    //             label: Text(
+                    //               file.originalName,
+                    //               overflow: TextOverflow.ellipsis,
+                    //               style: TextStyle(
+                    //                 fontSize: 11,
+                    //                 color: Colors.grey.shade800,
+                    //               ),
+                    //             ),
+                    //             backgroundColor: Colors.grey.shade200,
+                    //             padding: const EdgeInsets.symmetric(
+                    //               horizontal: 6,
+                    //               vertical: 2,
+                    //             ),
+                    //           ),
+                    //         ),
+                    //       )
+                    //       .toList(),
+                    // ),
                   ],
                 ),
               ),

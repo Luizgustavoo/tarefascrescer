@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:tarefas_projetocrescer/models/project_category_model.dart';
 import 'package:tarefas_projetocrescer/models/status.dart';
 import 'package:tarefas_projetocrescer/providers/project_category_provider.dart';
-import 'package:tarefas_projetocrescer/providers/project_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_status_provider.dart';
+import 'package:tarefas_projetocrescer/screens/widgets/add_new_item_dialog.dart';
 import 'package:tarefas_projetocrescer/screens/widgets/color_selector.dart';
 import 'package:tarefas_projetocrescer/utils/formatters.dart';
 import '../../models/project.dart';
@@ -39,8 +39,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
   int? selectedSituacaoId;
   int? selectedCategoryId;
   String _selectedColor = '#F8BBD0';
-  Status? selectedSituacao;
-  Status? selectedCategory;
   static const String _addNewSituacaoKey = 'ADD_NEW_SITUACAO';
   static const String _addNewCategoryKey = 'ADD_NEW_CATEGORIA';
   bool isInitialLoad = true;
@@ -49,7 +47,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
   @override
   void initState() {
     super.initState();
-    _selectedColor = (_isEditing ? widget.projectToEdit!.color : '#F8BBD0')!;
+    _selectedColor = (_isEditing ? widget.projectToEdit!.color : '#F8BBD0');
     if (_isEditing) {
       final project = widget.projectToEdit!;
       _nomeController.text = project.name;
@@ -89,6 +87,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
       );
 
       selectedSituacaoId = project.statusId;
+      selectedCategoryId = project.categoryId;
     }
     Future.microtask(() {
       Provider.of<ProjectStatusProvider>(
@@ -96,7 +95,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
         listen: false,
       ).fetchStatuses(Provider.of<AuthProvider>(context, listen: false));
 
-      Provider.of<ProjectCategoryProvidser>(
+      Provider.of<ProjectCategoryProvider>(
         context,
         listen: false,
       ).fetchCategories(Provider.of<AuthProvider>(context, listen: false));
@@ -106,20 +105,35 @@ class _AddProjectModalState extends State<AddProjectModal> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
     if (isInitialLoad) {
       final statusProvider = Provider.of<ProjectStatusProvider>(context);
-      if (statusProvider.statuses.isNotEmpty) {
+      final categoryProvider = Provider.of<ProjectCategoryProvider>(context);
+
+      if (statusProvider.statuses.isNotEmpty ||
+          categoryProvider.categories.isNotEmpty) {
         setState(() {
-          if (_isEditing && selectedSituacaoId != null) {
-            bool idExists = statusProvider.statuses.any(
-              (s) => s.id == selectedSituacaoId,
-            );
-            if (!idExists) {
+          if (statusProvider.statuses.isNotEmpty) {
+            if (_isEditing && selectedSituacaoId != null) {
+              bool idExists = statusProvider.statuses.any(
+                (s) => s.id == selectedSituacaoId,
+              );
+              if (!idExists)
+                selectedSituacaoId = statusProvider.statuses.first.id;
+            } else if (!_isEditing && selectedSituacaoId == null) {
               selectedSituacaoId = statusProvider.statuses.first.id;
             }
-          } else if (!_isEditing && selectedSituacaoId == null) {
-            selectedSituacaoId = statusProvider.statuses.first.id;
+          }
+
+          if (categoryProvider.categories.isNotEmpty) {
+            if (_isEditing && selectedCategoryId != null) {
+              bool idExists = categoryProvider.categories.any(
+                (c) => c.id == selectedCategoryId,
+              );
+              if (!idExists)
+                selectedCategoryId = categoryProvider.categories.first.id;
+            } else if (!_isEditing && selectedCategoryId == null) {
+              selectedCategoryId = categoryProvider.categories.first.id;
+            }
           }
           isInitialLoad = false;
         });
@@ -168,62 +182,62 @@ class _AddProjectModalState extends State<AddProjectModal> {
     }
   }
 
-  Future<void> _showAddSituacaoDialog() async {
-    final newSituacaoController = TextEditingController();
-    final dialogFormKey = GlobalKey<FormState>();
-
-    final String? newSituacaoName = await showDialog<String>(
+  Future<String?> _showAddNewItemDialog({required String title}) async {
+    return await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Nova Situação'),
-        content: Form(
-          key: dialogFormKey,
-          child: TextFormField(
-            controller: newSituacaoController,
-            decoration: const InputDecoration(hintText: 'Nome da situação'),
-            autofocus: true,
-            validator: (value) =>
-                value == null || value.isEmpty ? 'Campo obrigatório' : null,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (dialogFormKey.currentState!.validate()) {
-                Navigator.of(
-                  dialogContext,
-                ).pop(newSituacaoController.text.toUpperCase());
-              }
-            },
-            child: const Text('Salvar'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) => AddNewItemDialog(title: title),
+    );
+  }
+
+  Future<void> _showAddSituacaoDialog() async {
+    final String? newSituacaoName = await _showAddNewItemDialog(
+      title: 'Nova Situação',
     );
 
     if (newSituacaoName != null && newSituacaoName.isNotEmpty && mounted) {
-      final statusProvider = Provider.of<ProjectStatusProvider>(
-        context,
-        listen: false,
-      );
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final statusProvider = context.read<ProjectStatusProvider>();
+      final authProvider = context.read<AuthProvider>();
+
       final Status? newStatus = await statusProvider.registerStatus(
         newSituacaoName,
         authProvider,
       );
 
       if (newStatus != null && mounted) {
-        setState(() {
-          selectedSituacaoId = newStatus.id;
-        });
+        setState(() => selectedSituacaoId = newStatus.id);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao cadastrar status.'),
+            content: Text(
+              statusProvider.errorMessage ?? 'Erro ao cadastrar status.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showAddCategoryDialog() async {
+    final String? newCategoryName = await _showAddNewItemDialog(
+      title: 'Nova Categoria',
+    );
+
+    if (newCategoryName != null && newCategoryName.isNotEmpty && mounted) {
+      final categoryProvider = context.read<ProjectCategoryProvider>();
+      final authProvider = context.read<AuthProvider>();
+
+      final ProjectCategoryModel? newCategory = await categoryProvider
+          .registerCategory(newCategoryName, authProvider);
+
+      if (newCategory != null && mounted) {
+        setState(() => selectedCategoryId = newCategory.id);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              categoryProvider.errorMessage ?? 'Erro ao cadastrar categoria.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -237,9 +251,8 @@ class _AddProjectModalState extends State<AddProjectModal> {
     }
 
     final authProvider = context.read<AuthProvider>();
-    final projectProvider = context.read<ProjectProvider>();
-    final projectCategoryProvider = context.read<ProjectCategoryProvidser>();
     final statusProvider = context.read<ProjectStatusProvider>();
+    final categoryProvider = context.read<ProjectCategoryProvider>();
 
     if (authProvider.user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -255,21 +268,12 @@ class _AddProjectModalState extends State<AddProjectModal> {
       selectedStatusObject = statusProvider.statuses.firstWhere(
         (s) => s.id == selectedSituacaoId,
       );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro: Status selecionado inválido.')),
-      );
-      return;
-    }
-
-    try {
-      selectedCategoryObject = projectCategoryProvider.categories.firstWhere(
+      selectedCategoryObject = categoryProvider.categories.firstWhere(
         (c) => c.id == selectedCategoryId,
       );
     } catch (e) {
-      print(e.toString());
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro: Categoria selecionada inválida.')),
+        const SnackBar(content: Text('Erro: Status ou Categoria inválida.')),
       );
       return;
     }
@@ -316,9 +320,9 @@ class _AddProjectModalState extends State<AddProjectModal> {
 
     bool success;
     if (_isEditing) {
-      success = await projectProvider.updateProject(projectData, authProvider);
+      success = await categoryProvider.updateProject(projectData, authProvider);
     } else {
-      success = await projectProvider.registerProject(
+      success = await categoryProvider.registerProject(
         projectData,
         authProvider,
       );
@@ -336,7 +340,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              projectProvider.errorMessage ?? 'Falha ao cadastrar projeto.',
+              categoryProvider.errorMessage ?? 'Falha ao cadastrar projeto.',
             ),
             backgroundColor: Colors.red,
           ),
@@ -348,7 +352,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
   @override
   Widget build(BuildContext context) {
     final statusProvider = context.watch<ProjectStatusProvider>();
-    final categoryProvider = context.watch<ProjectCategoryProvidser>();
+    final categoryProvider = context.watch<ProjectCategoryProvider>();
 
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.85,
@@ -375,20 +379,14 @@ class _AddProjectModalState extends State<AddProjectModal> {
                 ),
                 const SizedBox(height: 24),
 
-                //aqui categoria
                 if (categoryProvider.isLoading &&
                     categoryProvider.categories.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
+                  const Center(child: CircularProgressIndicator())
                 else
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: DropdownButtonFormField<dynamic>(
-                      initialValue: selectedCategoryId,
+                      value: selectedCategoryId,
                       hint: const Text('Selecione uma categoria'),
                       isExpanded: true,
                       items: [
@@ -420,9 +418,9 @@ class _AddProjectModalState extends State<AddProjectModal> {
                       ],
                       onChanged: (newValue) {
                         if (newValue == _addNewCategoryKey) {
-                          //_showAddSituacaoDialog();
-                        } else if (newValue is Status) {
-                          setState(() => selectedCategory = newValue);
+                          _showAddCategoryDialog();
+                        } else if (newValue is int) {
+                          setState(() => selectedCategoryId = newValue);
                         }
                       },
                       decoration: const InputDecoration(
@@ -432,14 +430,27 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         ),
                       ),
                       validator: (value) =>
-                          value == null ? 'Selecione uma categoria' : null,
+                          value == null || value == _addNewCategoryKey
+                          ? 'Selecione uma categoria'
+                          : null,
                     ),
                   ),
-
-                _buildTextField(
-                  label: 'Nome Projeto/Emenda',
-                  controller: _nomeController,
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: TextFormField(
+                    controller: _nomeController,
+                    decoration: InputDecoration(
+                      labelText: 'Nome Projeto/Emenda',
+                      border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                      ),
+                    ),
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Este campo é obrigatório'
+                        : null,
+                  ),
                 ),
+
                 _buildTextField(
                   label: 'Responsável Fiscal',
                   controller: _responsavelFiscalController,
@@ -468,7 +479,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: DropdownButtonFormField<dynamic>(
-                      initialValue: selectedSituacaoId,
                       hint: const Text('Selecione uma situação'),
                       isExpanded: true,
                       items: [
@@ -499,8 +509,8 @@ class _AddProjectModalState extends State<AddProjectModal> {
                       onChanged: (newValue) {
                         if (newValue == _addNewSituacaoKey) {
                           _showAddSituacaoDialog();
-                        } else if (newValue is Status) {
-                          setState(() => selectedSituacao = newValue);
+                        } else if (newValue is int) {
+                          setState(() => selectedSituacaoId = newValue);
                         }
                       },
                       decoration: const InputDecoration(
@@ -510,14 +520,41 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         ),
                       ),
                       validator: (value) =>
-                          value == null ? 'Selecione uma situação' : null,
+                          value == null || value == _addNewSituacaoKey
+                          ? 'Selecione uma situação'
+                          : null,
                     ),
                   ),
 
-                _buildDatePickerField(
-                  label: 'Data Apresentação',
-                  controller: _dataApresentacaoController,
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: TextFormField(
+                    controller: _dataApresentacaoController,
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      labelText: 'Data Apresentação',
+                      border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                      ),
+                      suffixIcon: const Icon(Icons.calendar_today),
+                      isDense: true,
+                    ),
+
+                    onTap: () =>
+                        _selectDate(context, _dataApresentacaoController),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Selecione uma data';
+
+                      try {
+                        DateFormat('dd/MM/yyyy').parseStrict(v);
+                      } catch (e) {
+                        return 'Formato inválido (dd/MM/yyyy)';
+                      }
+                      return null;
+                    },
+                  ),
                 ),
+
                 _buildDatePickerField(
                   label: 'Data Aprovação',
                   controller: _dataAprovacaoController,
@@ -559,10 +596,21 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   ],
                 ),
 
-                _buildTextField(
-                  label: 'Observações',
-                  maxLines: 3,
-                  controller: _observacoesController,
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: TextFormField(
+                    controller: _observacoesController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: 'Objetivo do projeto',
+                      border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                      ),
+                    ),
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Este campo é obrigatório'
+                        : null,
+                  ),
                 ),
 
                 const SizedBox(height: 24),
@@ -608,8 +656,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
             borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
         ),
-        validator: (value) =>
-            value == null || value.isEmpty ? 'Este campo é obrigatório' : null,
       ),
     );
   }
@@ -634,16 +680,6 @@ class _AddProjectModalState extends State<AddProjectModal> {
         ),
 
         onTap: () => _selectDate(context, controller),
-        validator: (v) {
-          if (v == null || v.isEmpty) return 'Selecione uma data';
-
-          try {
-            DateFormat('dd/MM/yyyy').parseStrict(v);
-          } catch (e) {
-            return 'Formato inválido (dd/MM/yyyy)';
-          }
-          return null;
-        },
       ),
     );
   }

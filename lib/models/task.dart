@@ -76,7 +76,7 @@ class Task {
     String? color,
     DateTime? createdAt,
     DateTime? updatedAt,
-    Status? status,
+    Status? status, // Espera um objeto Status?
     List<dynamic>? attachments,
   }) {
     return Task(
@@ -89,7 +89,7 @@ class Task {
       color: color ?? this.color,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      status: status ?? this.status,
+      status: status ?? this.status, // Usa o objeto diretamente
       attachments: attachments ?? this.attachments,
     );
   }

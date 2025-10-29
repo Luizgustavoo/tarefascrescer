@@ -1,19 +1,16 @@
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tarefas_projetocrescer/models/project.dart';
+import 'package:tarefas_projetocrescer/models/project_category_model.dart';
 import 'package:tarefas_projetocrescer/providers/auth_provider.dart';
 import 'package:tarefas_projetocrescer/providers/graph_provider.dart';
-import 'package:tarefas_projetocrescer/providers/project_file_provider.dart';
+import 'package:tarefas_projetocrescer/providers/project_category_provider.dart';
 import 'package:tarefas_projetocrescer/providers/project_provider.dart';
 import 'package:tarefas_projetocrescer/providers/recent_task_provider.dart';
-import 'package:tarefas_projetocrescer/screens/widgets/add_project_modal.dart';
+import 'package:tarefas_projetocrescer/screens/project_list_screen.dart';
+import 'package:tarefas_projetocrescer/screens/widgets/add_new_item_dialog.dart';
 import 'package:tarefas_projetocrescer/screens/widgets/project_graph.dart';
 import 'package:tarefas_projetocrescer/screens/widgets/recent_task_card.dart';
 import 'widgets/home_header.dart';
-import 'widgets/project_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,54 +24,61 @@ class HomeScreenState extends State<HomeScreen> {
     super.initState();
     Future.microtask(() async {
       final authProvider = context.read<AuthProvider>();
-      final projectProvider = context.read<ProjectProvider>();
-      final recentTaskProvider = context.read<RecentTaskProvider>();
-      final graphProvider = context.read<GraphProvider>();
-      final projectFileProvider = context.read<ProjectFileProvider>();
 
-      recentTaskProvider.fetchRecentTasks(authProvider);
-      graphProvider.fetchGraphData(authProvider);
+      context.read<RecentTaskProvider>().fetchRecentTasks(authProvider);
+      context.read<GraphProvider>().fetchGraphData(authProvider);
 
-      await projectProvider.fetchProjects(authProvider);
-
-      if (mounted) {
-        for (final project in projectProvider.projects) {
-          if (project.id != null) {
-            projectFileProvider.fetchFiles(project.id!, authProvider);
-          }
-        }
-      }
+      context.read<ProjectCategoryProvider>().fetchCategories(authProvider);
     });
   }
 
   void _filterProjects(String query) {}
 
-  void _showEditProjectModal(BuildContext context, Project projectToEdit) {
-    showModalBottomSheet(
+  Future<void> _showEditCategoryDialog(ProjectCategoryModel category) async {
+    final String? newCategoryName = await showDialog<String>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        child: Container(
-          color: const Color(0xFFF8F8FA),
-
-          child: AddProjectModal(projectToEdit: projectToEdit),
-        ),
+      builder: (dialogContext) => AddNewItemDialog(
+        title: 'Editar Categoria',
+        initialValue: category.name,
       ),
     );
+
+    if (newCategoryName != null &&
+        newCategoryName.isNotEmpty &&
+        newCategoryName != category.name &&
+        mounted) {
+      final categoryProvider = context.read<ProjectCategoryProvider>();
+      final authProvider = context.read<AuthProvider>();
+
+      final success = await categoryProvider.updateCategory(
+        category.id,
+        newCategoryName,
+        authProvider,
+      );
+
+      if (mounted && !success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              categoryProvider.errorMessage ?? 'Erro ao atualizar categoria.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  Future<void> _confirmAndDeleteProject(Project project) async {
-    if (project.id == null) return;
+  Future<void> _confirmAndDeleteCategory(ProjectCategoryModel category) async {
+    final warningMessage = category.projects.isEmpty
+        ? 'Tem certeza que deseja excluir a categoria "${category.name}"?'
+        : 'Esta categoria contém ${category.projects.length} projeto(s).\n\nA exclusão pode falhar se houver projetos associados.\n\nDeseja continuar?';
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirmar Exclusão'),
-        content: Text(
-          'Tem certeza que deseja excluir o projeto "${project.name}"? Esta ação não pode ser desfeita.',
-        ),
+        content: Text(warningMessage),
         actions: <Widget>[
           TextButton(
             child: const Text('Cancelar'),
@@ -90,11 +94,11 @@ class HomeScreenState extends State<HomeScreen> {
     );
 
     if (confirmed == true && mounted) {
-      final projectProvider = context.read<ProjectProvider>();
+      final categoryProvider = context.read<ProjectCategoryProvider>();
       final authProvider = context.read<AuthProvider>();
 
-      final success = await projectProvider.deleteProject(
-        project.id!,
+      final success = await categoryProvider.deleteCategory(
+        category.id,
         authProvider,
       );
 
@@ -102,7 +106,7 @@ class HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              projectProvider.errorMessage ?? 'Falha ao excluir projeto.',
+              categoryProvider.errorMessage ?? 'Falha ao excluir categoria.',
             ),
             backgroundColor: Colors.red,
           ),
@@ -110,7 +114,7 @@ class HomeScreenState extends State<HomeScreen> {
       } else if (mounted && success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Projeto excluído com sucesso!'),
+            content: Text('Categoria excluída com sucesso!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -118,63 +122,9 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _pickAndUploadFile(Project project) async {
-    if (project.id == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('ID do Projeto inválido.')));
-      return;
-    }
-
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-    );
-
-    if (result != null && result.files.single.path != null && mounted) {
-      File file = File(result.files.single.path!);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Enviando ${result.files.single.name}...')),
-      );
-
-      final fileProvider = context.read<ProjectFileProvider>();
-      final authProvider = context.read<AuthProvider>();
-
-      final success = await fileProvider.uploadFile(
-        project.id!,
-        file,
-        authProvider,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).removeCurrentSnackBar();
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Arquivo anexado ao projeto!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(fileProvider.uploadError ?? 'Falha no upload.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } else if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Seleção cancelada.')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final projectProvider = context.watch<ProjectProvider>();
+    final categoryProvider = context.watch<ProjectCategoryProvider>();
     final recentTaskProvider = context.watch<RecentTaskProvider>();
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -187,7 +137,7 @@ class HomeScreenState extends State<HomeScreen> {
               child: HomeHeader(onSearchChanged: _filterProjects),
             ),
             Expanded(
-              child: projectProvider.isLoading
+              child: categoryProvider.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : RefreshIndicator(
                       onRefresh: () async {
@@ -197,6 +147,9 @@ class HomeScreenState extends State<HomeScreen> {
                         );
 
                         await Future.wait([
+                          context
+                              .read<ProjectCategoryProvider>()
+                              .fetchCategories(authProvider),
                           Provider.of<ProjectProvider>(
                             context,
                             listen: false,
@@ -229,79 +182,178 @@ class HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 16),
                           SizedBox(
                             height: 120,
-                            child: recentTaskProvider.isLoading
-                                ? const Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : recentTaskProvider.errorMessage != null
-                                ? Center(
-                                    child: Text(
-                                      recentTaskProvider.errorMessage!,
-                                      style: const TextStyle(color: Colors.red),
-                                    ),
-                                  )
-                                : recentTaskProvider.recentTasks.isEmpty
-                                ? const Center(
-                                    child: Text('Nenhuma tarefa recente.'),
-                                  )
-                                : ListView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24.0,
-                                    ),
-                                    itemCount:
-                                        recentTaskProvider.recentTasks.length,
-                                    itemBuilder: (context, index) {
-                                      final task =
-                                          recentTaskProvider.recentTasks[index];
+                            child: _buildRecentTasksList(recentTaskProvider),
+                          ),
 
-                                      return Padding(
-                                        padding: EdgeInsets.only(
-                                          right:
-                                              index <
-                                                  recentTaskProvider
-                                                          .recentTasks
-                                                          .length -
-                                                      1
-                                              ? 16.0
-                                              : 0,
-                                        ),
-                                        child: RecentTaskCard(task: task),
-                                      );
-                                    },
-                                  ),
+                          const SizedBox(height: 16),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 24.0),
+                            child: Text(
+                              'Categorias',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 16),
-                          ListView.separated(
-                            itemCount: projectProvider.projects.length,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24.0,
-                            ),
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: 16),
-                            itemBuilder: (context, index) {
-                              final project = projectProvider.projects[index];
-                              final cardColor = index.isEven
-                                  ? Colors.white
-                                  : const Color(0xFFFFF1F3);
-                              return ProjectCard(
-                                project: project,
-                                backgroundColor: cardColor,
-                                onEdit: () =>
-                                    _showEditProjectModal(context, project),
-                                onDelete: () =>
-                                    _confirmAndDeleteProject(project),
-                                onAttach: () => _pickAndUploadFile(project),
-                              );
-                            },
-                          ),
+                          _buildCategoryList(categoryProvider),
                         ],
                       ),
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentTasksList(RecentTaskProvider provider) {
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    if (provider.errorMessage != null) {
+      return Center(
+        child: Text(
+          provider.errorMessage!,
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+    if (provider.recentTasks.isEmpty) {
+      return const Center(child: Text('Nenhuma tarefa recente.'));
+    }
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      itemCount: provider.recentTasks.length,
+      itemBuilder: (context, index) {
+        final task = provider.recentTasks[index];
+        return Padding(
+          padding: EdgeInsets.only(
+            right: index < provider.recentTasks.length - 1 ? 16.0 : 0,
+          ),
+          child: RecentTaskCard(task: task),
+        );
+      },
+    );
+  }
+
+  Widget _buildCategoryList(ProjectCategoryProvider provider) {
+    if (provider.isLoading && provider.categories.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (provider.errorMessage != null) {
+      return Center(
+        child: Text(
+          'Erro: ${provider.errorMessage}',
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+    if (provider.categories.isEmpty) {
+      return const Center(child: Text('Nenhuma categoria cadastrada.'));
+    }
+
+    return ListView.separated(
+      itemCount: provider.categories.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final category = provider.categories[index];
+
+        return _buildCategoryCard(category);
+      },
+    );
+  }
+
+  Widget _buildCategoryCard(ProjectCategoryModel category) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProjectListScreen(category: category),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(12.0),
+      child: Container(
+        padding: const EdgeInsets.only(
+          left: 20.0,
+          right: 8.0,
+          top: 12.0,
+          bottom: 12.0,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(color: Colors.grey.shade200, width: 1.5),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    category.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                      overflow: TextOverflow.ellipsis,
+                      color: Color(0xFF303030),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${category.projects.length} ${category.projects.length == 1 ? 'projeto' : 'projetos'}',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    size: 22,
+                    color: Colors.grey.shade600,
+                  ),
+                  onPressed: () {
+                    _showEditCategoryDialog(category);
+                  },
+                  tooltip: 'Editar nome da categoria',
+                  splashRadius: 20,
+                  padding: const EdgeInsets.all(10),
+                ),
+
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 22,
+                    color: Colors.red.shade600,
+                  ),
+                  onPressed: () {
+                    _confirmAndDeleteCategory(category);
+                  },
+                  tooltip: 'Deletar categoria',
+                  splashRadius: 20,
+                  padding: const EdgeInsets.all(10),
+                ),
+
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(width: 8),
+              ],
             ),
           ],
         ),

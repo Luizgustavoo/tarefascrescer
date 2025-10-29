@@ -8,17 +8,17 @@ import '../project_details_screen.dart';
 
 class ProjectCard extends StatelessWidget {
   final Project project;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onAttach;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final VoidCallback? onAttach;
   final Color? backgroundColor;
 
   const ProjectCard({
     super.key,
     required this.project,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onAttach,
+    this.onEdit,
+    this.onDelete,
+    this.onAttach,
     this.backgroundColor,
   });
 
@@ -227,9 +227,12 @@ class ProjectCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _actionButton(icon: Icons.edit, onPressed: onEdit),
-                _actionButton(icon: Icons.delete, onPressed: onDelete),
-                _actionButton(icon: Icons.attach_file, onPressed: onAttach),
+                if (onEdit != null)
+                  _actionButton(icon: Icons.edit, onPressed: onEdit!),
+                if (onDelete != null)
+                  _actionButton(icon: Icons.delete, onPressed: onDelete!),
+                if (onAttach != null)
+                  _actionButton(icon: Icons.attach_file, onPressed: onAttach!),
               ],
             ),
           ],
