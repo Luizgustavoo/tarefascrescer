@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_masked_text2/flutter_masked_text2.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:tarefas_projetocrescer/models/project_category_model.dart';
@@ -32,9 +34,19 @@ class _AddProjectModalState extends State<AddProjectModal> {
   final _finalCaptacaoController = TextEditingController();
   final _inicioExecucaoController = TextEditingController();
   final _fimExecucaoController = TextEditingController();
-  final _valorApresentadoController = TextEditingController();
-  final _valorAprovadoController = TextEditingController();
-  final _totalColetadoController = TextEditingController();
+
+  final _valorApresentadoController = MoneyMaskedTextController(
+    decimalSeparator: ',',
+    thousandSeparator: '.',
+  );
+  final _valorAprovadoController = MoneyMaskedTextController(
+    decimalSeparator: ',',
+    thousandSeparator: '.',
+  );
+  final _totalColetadoController = MoneyMaskedTextController(
+    decimalSeparator: ',',
+    thousandSeparator: '.',
+  );
 
   int? selectedSituacaoId;
   int? selectedCategoryId;
@@ -43,6 +55,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
   static const String _addNewCategoryKey = 'ADD_NEW_CATEGORIA';
   bool isInitialLoad = true;
   bool get _isEditing => widget.projectToEdit != null;
+  final AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
 
   @override
   void initState() {
@@ -76,15 +89,9 @@ class _AddProjectModalState extends State<AddProjectModal> {
         project.executionEndDate,
       );
 
-      _valorApresentadoController.text = Formatters.formatCurrency(
-        project.presentedValue,
-      );
-      _valorAprovadoController.text = Formatters.formatCurrency(
-        project.approvedValue,
-      );
-      _totalColetadoController.text = Formatters.formatCurrency(
-        project.totalCollected,
-      );
+      _valorApresentadoController.updateValue(project.presentedValue);
+      _valorAprovadoController.updateValue(project.approvedValue ?? 0.0);
+      _totalColetadoController.updateValue(project.totalCollected ?? 0.0);
 
       selectedSituacaoId = project.statusId;
       selectedCategoryId = project.categoryId;
@@ -289,12 +296,11 @@ class _AddProjectModalState extends State<AddProjectModal> {
       presentationDate: Formatters.formatDateForApiFromString(
         _dataApresentacaoController.text,
       ),
-      presentedValue:
-          Formatters.parseCurrency(_valorApresentadoController.text) ?? 0.0,
+      presentedValue: _valorApresentadoController.numberValue,
       approvalDate: Formatters.formatDateForApiFromString(
         _dataAprovacaoController.text,
       ),
-      approvedValue: Formatters.parseCurrency(_valorAprovadoController.text),
+      approvedValue: _valorAprovadoController.numberValue,
       accountabilityDate: Formatters.formatDateForApiFromString(
         _dataPrestacaoContasController.text,
       ),
@@ -304,7 +310,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
       collectionEndDate: Formatters.formatDateForApiFromString(
         _finalCaptacaoController.text,
       ),
-      totalCollected: Formatters.parseCurrency(_totalColetadoController.text),
+      totalCollected: _totalColetadoController.numberValue,
       executionStartDate: Formatters.formatDateForApiFromString(
         _inicioExecucaoController.text,
       ),
@@ -365,6 +371,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
         ),
         child: Form(
           key: _formKey,
+          autovalidateMode: _autovalidateMode, // Usa a variável de estado
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -377,8 +384,17 @@ class _AddProjectModalState extends State<AddProjectModal> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 24),
 
+                // NOVO: Texto de ajuda
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 24.0),
+                  child: Text(
+                    'Preencha as informações abaixo. Campos com * são obrigatórios.',
+                    style: TextStyle(fontSize: 14, color: Colors.red.shade600),
+                  ),
+                ),
+
+                // --- Dropdown de Categoria ---
                 if (categoryProvider.isLoading &&
                     categoryProvider.categories.isEmpty)
                   const Center(child: CircularProgressIndicator())
@@ -424,7 +440,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         }
                       },
                       decoration: const InputDecoration(
-                        labelText: 'Categoria',
+                        labelText: 'Categoria *',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(12)),
                         ),
@@ -435,24 +451,15 @@ class _AddProjectModalState extends State<AddProjectModal> {
                           : null,
                     ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: TextFormField(
-                    controller: _nomeController,
-                    decoration: InputDecoration(
-                      labelText: 'Nome Projeto/Emenda',
-                      border: const OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                      ),
-                    ),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Este campo é obrigatório'
-                        : null,
-                  ),
-                ),
 
+                // --- Campos de Texto ---
+                // Adiciona 'isOptional: false' (ou omite) para campos obrigatórios
                 _buildTextField(
-                  label: 'Responsável Fiscal',
+                  label: 'Nome Projeto/Emenda *',
+                  controller: _nomeController,
+                ),
+                _buildTextField(
+                  label: 'Responsável Fiscal *',
                   controller: _responsavelFiscalController,
                 ),
 
@@ -460,14 +467,12 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   padding: const EdgeInsets.only(bottom: 16.0),
                   child: ColorSelector(
                     initialColor: _selectedColor,
-                    onColorSelected: (newColor) {
-                      setState(() {
-                        _selectedColor = newColor;
-                      });
-                    },
+                    onColorSelected: (newColor) =>
+                        setState(() => _selectedColor = newColor),
                   ),
                 ),
 
+                // --- Dropdown de Situação ---
                 if (statusProvider.isLoading && statusProvider.statuses.isEmpty)
                   const Center(
                     child: Padding(
@@ -514,7 +519,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         }
                       },
                       decoration: const InputDecoration(
-                        labelText: 'Situação',
+                        labelText: 'Situação *',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(12)),
                         ),
@@ -526,54 +531,49 @@ class _AddProjectModalState extends State<AddProjectModal> {
                     ),
                   ),
 
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: TextFormField(
-                    controller: _dataApresentacaoController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: 'Data Apresentação',
-                      border: const OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                      ),
-                      suffixIcon: const Icon(Icons.calendar_today),
-                      isDense: true,
-                    ),
-
-                    onTap: () =>
-                        _selectDate(context, _dataApresentacaoController),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Selecione uma data';
-
-                      try {
-                        DateFormat('dd/MM/yyyy').parseStrict(v);
-                      } catch (e) {
-                        return 'Formato inválido (dd/MM/yyyy)';
-                      }
-                      return null;
-                    },
-                  ),
+                // --- Campos de Data ---
+                _buildDatePickerField(
+                  label: 'Data Apresentação *',
+                  controller: _dataApresentacaoController,
                 ),
-
+                _buildCurrencyField(
+                  label: 'Valor Apresentado',
+                  controller: _valorApresentadoController,
+                  isOptional: true,
+                ),
                 _buildDatePickerField(
                   label: 'Data Aprovação',
                   controller: _dataAprovacaoController,
+                  isOptional: true,
+                ),
+                _buildCurrencyField(
+                  label: 'Valor Aprovado',
+                  controller: _valorAprovadoController,
+                  isOptional: true,
                 ),
                 _buildDatePickerField(
                   label: 'Data Prestação de contas',
                   controller: _dataPrestacaoContasController,
+                  isOptional: true,
                 ),
                 _buildDatePickerField(
                   label: 'Início Captação',
                   controller: _inicioCaptacaoController,
+                  isOptional: true,
                 ),
                 _buildDatePickerField(
                   label: 'Final Captação',
                   controller: _finalCaptacaoController,
+                  isOptional: true,
+                ),
+                _buildCurrencyField(
+                  label: 'Total Coletado',
+                  controller: _totalColetadoController,
+                  isOptional: true,
                 ),
 
                 const Text(
-                  "Período de Execução",
+                  "Período de Execução *",
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 Row(
@@ -583,6 +583,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         label: 'Início',
                         controller: _inicioExecucaoController,
                         isDense: true,
+                        isOptional: true,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -591,26 +592,16 @@ class _AddProjectModalState extends State<AddProjectModal> {
                         label: 'Fim',
                         controller: _fimExecucaoController,
                         isDense: true,
+                        isOptional: true,
                       ),
                     ),
                   ],
                 ),
 
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: TextFormField(
-                    controller: _observacoesController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: 'Objetivo do projeto',
-                      border: const OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                      ),
-                    ),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Este campo é obrigatório'
-                        : null,
-                  ),
+                _buildTextField(
+                  label: 'Objetivo do projeto *',
+                  maxLines: 3,
+                  controller: _observacoesController,
                 ),
 
                 const SizedBox(height: 24),
@@ -639,23 +630,62 @@ class _AddProjectModalState extends State<AddProjectModal> {
     );
   }
 
+  InputDecoration _buildInputDecoration({
+    required String label,
+    IconData? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      alignLabelWithHint: true, // Melhora alinhamento
+      border: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+      // Borda padrão
+      enabledBorder: OutlineInputBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(color: Colors.grey.shade400, width: 1.0),
+      ),
+      // Borda quando focado
+      focusedBorder: OutlineInputBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(
+          color: Theme.of(context).primaryColor,
+          width: 2.0,
+        ),
+      ),
+      // Borda de ERRO
+      errorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(color: Colors.red, width: 1.5),
+      ),
+      // Borda de erro quando focado
+      focusedErrorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(color: Colors.red, width: 2.0),
+      ),
+      suffixIcon: suffixIcon != null ? Icon(suffixIcon) : null,
+    );
+  }
+
   Widget _buildTextField({
     required String label,
     int maxLines = 1,
     TextEditingController? controller,
+    bool isOptional = false, // NOVO
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          alignLabelWithHint: maxLines > 1,
-          border: const OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-          ),
-        ),
+        decoration: _buildInputDecoration(label: label), // Usa o helper
+        validator: (value) {
+          // Só valida se NÃO for opcional
+          if (!isOptional && (value == null || value.isEmpty)) {
+            return 'Este campo é obrigatório';
+          }
+          return null;
+        },
       ),
     );
   }
@@ -664,22 +694,62 @@ class _AddProjectModalState extends State<AddProjectModal> {
     required String label,
     required TextEditingController controller,
     bool isDense = false,
+    bool isOptional = false, // NOVO
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         controller: controller,
         readOnly: true,
+        decoration: _buildInputDecoration(
+          label: label,
+          suffixIcon: Icons.calendar_today,
+        ).copyWith(isDense: isDense),
+        onTap: () => _selectDate(context, controller),
+        validator: (v) {
+          if (!isOptional && (v == null || v.isEmpty))
+            return 'Selecione uma data';
+          if (v != null && v.isNotEmpty) {
+            try {
+              DateFormat('dd/MM/yyyy').parseStrict(v);
+            } catch (e) {
+              return 'Formato inválido (dd/MM/yyyy)';
+            }
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _buildCurrencyField({
+    required String label,
+    required TextEditingController controller,
+    bool isOptional = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        // Adiciona um formatador simples para números
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[\d,\.]')),
+        ],
         decoration: InputDecoration(
           labelText: label,
+          prefixText: 'R\$ ',
           border: const OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
-          suffixIcon: const Icon(Icons.calendar_today),
-          isDense: isDense,
         ),
-
-        onTap: () => _selectDate(context, controller),
+        // Opcional: Formatar ao perder o foco
+        onEditingComplete: () {
+          final value = Formatters.parseCurrency(controller.text);
+          if (value != null) {
+            controller.text = Formatters.formatCurrency(value);
+          }
+        },
       ),
     );
   }

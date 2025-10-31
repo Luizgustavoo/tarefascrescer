@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:tarefas_projetocrescer/models/project.dart';
 import 'package:tarefas_projetocrescer/models/status.dart';
 import 'package:tarefas_projetocrescer/models/task.dart';
@@ -15,6 +17,8 @@ import 'package:tarefas_projetocrescer/providers/task_provider.dart';
 import 'package:tarefas_projetocrescer/screens/widgets/add_task_modal.dart';
 import 'package:tarefas_projetocrescer/screens/widgets/pdf_viewer_screen.dart';
 import 'package:tarefas_projetocrescer/utils/formatters.dart';
+
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class ProjectDetailsScreen extends StatefulWidget {
   final Project project;
@@ -260,12 +264,19 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     }
   }
 
-  void _showImageDialog(TaskFile file, String heroTag) {
+  void _showImageDialog(dynamic file, String heroTag) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (context) => AlertDialog(
+        title: Text(
+          file.originalName,
+          style: const TextStyle(fontSize: 16),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        contentPadding: const EdgeInsets.all(8.0),
         insetPadding: const EdgeInsets.all(16.0),
-        child: Hero(
+        content: Hero(
           tag: heroTag,
           child: InteractiveViewer(
             child: CachedNetworkImage(
@@ -278,8 +289,113 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Fechar'),
+          ),
+
+          ElevatedButton.icon(
+            icon: const Icon(CupertinoIcons.share_solid, size: 18),
+            label: const Text('Compartilhar'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              _shareFile(file);
+            },
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _shareProjectDetails(Project project) async {
+    String fDate(String? apiDate) => Formatters.formatApiDate(apiDate);
+    String fCurrency(double? value) => Formatters.formatCurrency(value);
+
+    final String content =
+        """
+*DETALHES DO PROJETO*
+---------------------------------
+*Projeto:* ${project.name}
+*Status:* ${project.status?.name ?? 'N/A'}
+*Responsável Fiscal:* ${project.fiscalResponsible}
+
+*--- Datas ---*
+*Apresentação:* ${fDate(project.presentationDate)}
+*Aprovação:* ${fDate(project.approvalDate)}
+*Prestação de Contas:* ${fDate(project.accountabilityDate)}
+*Início Captação:* ${fDate(project.collectionStartDate)}
+*Final Captação:* ${fDate(project.collectionEndDate)}
+*Período de Execução:* ${fDate(project.executionStartDate)} a ${fDate(project.executionEndDate)}
+
+*--- Valores ---*
+*Valor Apresentado:* ${fCurrency(project.presentedValue)}
+*Valor Aprovado:* ${fCurrency(project.approvedValue)}
+*Total Captado:* ${fCurrency(project.totalCollected)}
+
+*--- Descrição ---*
+${project.observations}
+""";
+
+    final box = context.findRenderObject() as RenderBox?;
+
+    await Share.share(
+      content,
+      subject: 'Detalhes do Projeto: ${project.name}',
+      sharePositionOrigin: box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null,
+    );
+  }
+
+  Future<void> _shareTaskDetails(Task task) async {
+    // Acessa o nome do projeto através do 'widget.project'
+    final String projectName = widget.project.name;
+
+    final String content =
+        """
+*Projeto:* $projectName
+*Tarefa:* ${task.description}
+*Status:* ${task.status?.name ?? 'N/A'}
+*Data:* ${DateFormat('dd/MM/yyyy HH:mm').format(task.scheduledAt)}
+""";
+
+    await Share.share(
+      content,
+      subject: 'Tarefa: ${task.description} (Projeto: $projectName)',
+    );
+  }
+
+  Future<void> _shareFile(dynamic file) async {
+    if (file.fileUrl == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Preparando ${file.originalName}...')),
+    );
+
+    try {
+      final fileData = await DefaultCacheManager().getSingleFile(
+        file.fileUrl as String,
+      );
+
+      final xFile = XFile(fileData.path);
+
+      if (mounted) ScaffoldMessenger.of(context).removeCurrentSnackBar();
+
+      await Share.shareXFiles([
+        xFile,
+      ], text: 'Confira este arquivo: ${file.originalName}');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao compartilhar arquivo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -377,13 +493,37 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-              AnimatedRotation(
-                turns: _isSummaryExpanded ? 0.5 : 0,
-                duration: const Duration(milliseconds: 300),
-                child: Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Colors.grey.shade600,
-                ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      CupertinoIcons.share_solid,
+                      color: Colors.grey.shade600,
+                      size: 22,
+                    ),
+                    onPressed: () {
+                      _shareProjectDetails(project);
+                    },
+                    tooltip: 'Compartilhar Detalhes',
+                    splashRadius: 20,
+                  ),
+
+                  IconButton(
+                    icon: AnimatedRotation(
+                      turns: _isSummaryExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    onPressed: () => setState(
+                      () => _isSummaryExpanded = !_isSummaryExpanded,
+                    ),
+                    tooltip: _isSummaryExpanded ? 'Recolher' : 'Expandir',
+                    splashRadius: 20,
+                  ),
+                ],
               ),
             ],
           ),
@@ -392,45 +532,71 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     }
 
     Widget buildDetails() {
-      return Padding(
-        padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Divider(height: 1, thickness: 1),
-            const SizedBox(height: 16),
-            _buildDetailRow(
-              title1: 'Apresentação',
-              value1: Formatters.formatApiDate(project.presentationDate),
-              title2: 'Aprovação',
-              value2: Formatters.formatApiDate(project.approvalDate),
-            ),
-            const SizedBox(height: 12),
-            _buildDetailRow(
-              title1: 'Final Captação',
-              value1: Formatters.formatApiDate(project.collectionEndDate),
-              title2: 'Prestação Contas',
-              value2: Formatters.formatApiDate(project.accountabilityDate),
-            ),
-            const SizedBox(height: 12),
-            _buildDetailRow(
-              title1: 'Responsável Fiscal',
-              value1: project.fiscalResponsible,
-              title2: 'Total Captado',
-              value2: Formatters.formatCurrency(project.totalCollected),
-            ),
-            const SizedBox(height: 12),
-            _buildMultiLineDetail(
-              title: 'Período de Execução',
-              value:
-                  '${Formatters.formatApiDate(project.executionStartDate)} a ${Formatters.formatApiDate(project.executionEndDate)}',
-            ),
-            const SizedBox(height: 12),
-            _buildMultiLineDetail(
-              title: 'Observações',
-              value: project.observations,
-            ),
-          ],
+      return Container(
+        color: Colors.grey.shade50,
+        child: Padding(
+          padding: const EdgeInsets.only(
+            left: 16.0,
+            right: 16.0,
+            bottom: 16.0,
+            top: 8.0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Divider(height: 1, thickness: 1),
+              const SizedBox(height: 16),
+
+              // --- Seção de Valores ---
+              _buildDetailRow(
+                title1: 'Valor Apresentado',
+                value1: Formatters.formatCurrency(project.presentedValue),
+                title2: 'Valor Aprovado',
+                value2: Formatters.formatCurrency(project.approvedValue),
+              ),
+              const SizedBox(height: 12),
+              _buildDetailRow(
+                title1: 'Total Captado',
+                value1: Formatters.formatCurrency(project.totalCollected),
+                title2: 'Responsável Fiscal',
+                value2: project.fiscalResponsible,
+              ),
+              const Divider(height: 24),
+
+              // --- Seção de Datas ---
+              _buildDetailRow(
+                title1: 'Apresentação',
+                value1: Formatters.formatApiDate(project.presentationDate),
+                title2: 'Aprovação',
+                value2: Formatters.formatApiDate(project.approvalDate),
+              ),
+              const SizedBox(height: 12),
+              _buildDetailRow(
+                title1: 'Início Captação',
+                value1: Formatters.formatApiDate(project.collectionStartDate),
+                title2: 'Final Captação',
+                value2: Formatters.formatApiDate(project.collectionEndDate),
+              ),
+              const SizedBox(height: 12),
+              _buildMultiLineDetail(
+                title: 'Período de Execução',
+                value:
+                    '${Formatters.formatApiDate(project.executionStartDate)} a ${Formatters.formatApiDate(project.executionEndDate)}',
+              ),
+              const SizedBox(height: 12),
+              _buildMultiLineDetail(
+                title: 'Data Prestação Contas',
+                value: Formatters.formatApiDate(project.accountabilityDate),
+              ),
+              const Divider(height: 24),
+
+              // --- Seção de Observações ---
+              _buildMultiLineDetail(
+                title: 'Observações',
+                value: project.observations,
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -640,38 +806,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                         },
                       ),
                     ),
-
-                    // Wrap(
-                    //   spacing: 8.0,
-                    //   runSpacing: 4.0,
-                    //   children: taskFiles
-                    //       .map(
-                    //         (file) => InkWell(
-                    //           onTap: () => _openFile(file),
-                    //           child: Chip(
-                    //             avatar: Icon(
-                    //               file.icon,
-                    //               size: 16,
-                    //               color: Theme.of(context).primaryColor,
-                    //             ),
-                    //             label: Text(
-                    //               file.originalName,
-                    //               overflow: TextOverflow.ellipsis,
-                    //               style: TextStyle(
-                    //                 fontSize: 11,
-                    //                 color: Colors.grey.shade800,
-                    //               ),
-                    //             ),
-                    //             backgroundColor: Colors.grey.shade200,
-                    //             padding: const EdgeInsets.symmetric(
-                    //               horizontal: 6,
-                    //               vertical: 2,
-                    //             ),
-                    //           ),
-                    //         ),
-                    //       )
-                    //       .toList(),
-                    // ),
                   ],
                 ),
               ),
@@ -703,6 +837,11 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                 _actionButton(
                   icon: Icons.attach_file,
                   onPressed: () => _pickAndUploadFile(task),
+                  buttonColor: textColor,
+                ),
+                _actionButton(
+                  icon: CupertinoIcons.share_solid,
+                  onPressed: () => _shareTaskDetails(task),
                   buttonColor: textColor,
                 ),
               ],

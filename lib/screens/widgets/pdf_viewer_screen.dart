@@ -1,11 +1,11 @@
 // FILE: lib/screens/widgets/pdf_viewer_screen.dart
 
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart'; // Importe o share_plus
 
 class PdfViewerScreen extends StatefulWidget {
   final String fileUrl;
@@ -37,7 +37,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   Future<void> _loadPdf() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      // Usa um nome de arquivo baseado no nome original + ID para evitar conflitos
       final filename = '${widget.heroTag}-${widget.fileName}';
       final file = File('${dir.path}/$filename');
 
@@ -72,31 +71,20 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     }
   }
 
-  // ## A CORREÇÃO ESTÁ AQUI ##
-  // Esta função contém a lógica 'if/else' e retorna o widget correto
-  Widget _buildBody() {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            'Erro ao carregar PDF: $error',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
+  // NOVO: Função para compartilhar o arquivo PDF local
+  Future<void> _shareLocalFile() async {
     if (localPath != null) {
-      return PDFView(
-        filePath: localPath!,
-        enableSwipe: true,
-        swipeHorizontal: false,
-      );
+      await Share.shareXFiles([
+        XFile(localPath!),
+      ], text: 'Confira este documento: ${widget.fileName}');
     }
-    // Fallback
+  }
+
+  Widget _buildBody() {
+    if (isLoading) return const Center(child: CircularProgressIndicator());
+    if (error != null)
+      return Center(child: Text('Erro ao carregar PDF: $error'));
+    if (localPath != null) return PDFView(filePath: localPath!);
     return const Center(child: Text('Não foi possível carregar o PDF.'));
   }
 
@@ -105,12 +93,18 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.fileName, overflow: TextOverflow.ellipsis),
+        actions: [
+          // NOVO: Botão de compartilhar, habilitado apenas se o arquivo foi carregado
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Compartilhar PDF',
+            onPressed: (isLoading || localPath == null)
+                ? null
+                : _shareLocalFile,
+          ),
+        ],
       ),
-      body: Hero(
-        tag: widget.heroTag,
-        // O child agora chama a função _buildBody(), que retorna um único widget
-        child: _buildBody(),
-      ),
+      body: Hero(tag: widget.heroTag, child: _buildBody()),
     );
   }
 }
