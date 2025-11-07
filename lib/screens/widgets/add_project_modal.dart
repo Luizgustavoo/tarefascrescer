@@ -25,8 +25,11 @@ class AddProjectModal extends StatefulWidget {
 class _AddProjectModalState extends State<AddProjectModal> {
   final _formKey = GlobalKey<FormState>();
   final _nomeController = TextEditingController();
-  final _responsavelFiscalController = TextEditingController();
+  final _responsavelFiscalController = TextEditingController(
+    text: "Sem responsável inicial",
+  );
   final _observacoesController = TextEditingController();
+  final _contaBancariaController = TextEditingController();
   final _dataApresentacaoController = TextEditingController();
   final _dataAprovacaoController = TextEditingController();
   final _dataPrestacaoContasController = TextEditingController();
@@ -66,6 +69,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
       _nomeController.text = project.name;
       _responsavelFiscalController.text = project.fiscalResponsible;
       _observacoesController.text = project.observations;
+      _contaBancariaController.text = project.bankAccount ?? "";
 
       _dataApresentacaoController.text = Formatters.formatApiDate(
         project.presentationDate,
@@ -153,6 +157,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
     _nomeController.dispose();
     _responsavelFiscalController.dispose();
     _observacoesController.dispose();
+    _contaBancariaController.dispose();
     _dataApresentacaoController.dispose();
     _dataAprovacaoController.dispose();
     _dataPrestacaoContasController.dispose();
@@ -181,6 +186,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
       initialDate: initial,
       firstDate: DateTime(2000),
       lastDate: DateTime(20101),
+      locale: Locale('pt', 'BR'),
     );
     if (picked != null) {
       setState(() {
@@ -318,6 +324,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
         _fimExecucaoController.text,
       ),
       observations: _observacoesController.text,
+      bankAccount: _contaBancariaController.text,
       createdBy: _isEditing
           ? widget.projectToEdit!.createdBy
           : authProvider.user!.id,
@@ -402,7 +409,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: DropdownButtonFormField<dynamic>(
-                      value: selectedCategoryId,
+                      initialValue: selectedCategoryId,
                       hint: const Text('Selecione uma categoria'),
                       isExpanded: true,
                       items: [
@@ -484,6 +491,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: DropdownButtonFormField<dynamic>(
+                      initialValue: selectedSituacaoId,
                       hint: const Text('Selecione uma situação'),
                       isExpanded: true,
                       items: [
@@ -599,6 +607,12 @@ class _AddProjectModalState extends State<AddProjectModal> {
                 ),
 
                 _buildTextField(
+                  label: 'Conta bancária',
+                  maxLines: 1,
+                  controller: _contaBancariaController,
+                ),
+
+                _buildTextField(
                   label: 'Objetivo do projeto *',
                   maxLines: 3,
                   controller: _observacoesController,
@@ -694,7 +708,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
     required String label,
     required TextEditingController controller,
     bool isDense = false,
-    bool isOptional = false, // NOVO
+    bool isOptional = true, // NOVO
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -709,7 +723,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
         validator: (v) {
           if (!isOptional && (v == null || v.isEmpty))
             return 'Selecione uma data';
-          if (v != null && v.isNotEmpty) {
+          if (!isOptional && v != null && v.isNotEmpty) {
             try {
               DateFormat('dd/MM/yyyy').parseStrict(v);
             } catch (e) {
@@ -725,7 +739,7 @@ class _AddProjectModalState extends State<AddProjectModal> {
   Widget _buildCurrencyField({
     required String label,
     required TextEditingController controller,
-    bool isOptional = false,
+    bool isOptional = true,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),

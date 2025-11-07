@@ -15,6 +15,7 @@ import 'package:tarefas_projetocrescer/providers/task_provider.dart';
 import 'package:tarefas_projetocrescer/providers/task_status_provider.dart';
 import 'package:tarefas_projetocrescer/screens/splash_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +55,9 @@ class MyApp extends StatelessWidget {
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
         useMaterial3: true,
       ),
+      locale: Locale('pt', 'BR'), // opcional, define o idioma
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: [const Locale('en', 'US'), const Locale('pt', 'BR')],
       home: const SplashScreen(),
     );
   }

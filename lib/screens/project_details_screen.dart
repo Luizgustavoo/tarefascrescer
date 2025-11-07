@@ -332,6 +332,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
 *Valor Apresentado:* ${fCurrency(project.presentedValue)}
 *Valor Aprovado:* ${fCurrency(project.approvedValue)}
 *Total Captado:* ${fCurrency(project.totalCollected)}
+*Conta bancária:* ${project.bankAccount}
 
 *--- Descrição ---*
 ${project.observations}
@@ -534,68 +535,73 @@ ${project.observations}
     Widget buildDetails() {
       return Container(
         color: Colors.grey.shade50,
-        child: Padding(
-          padding: const EdgeInsets.only(
-            left: 16.0,
-            right: 16.0,
-            bottom: 16.0,
-            top: 8.0,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Divider(height: 1, thickness: 1),
-              const SizedBox(height: 16),
-
-              // --- Seção de Valores ---
-              _buildDetailRow(
-                title1: 'Valor Apresentado',
-                value1: Formatters.formatCurrency(project.presentedValue),
-                title2: 'Valor Aprovado',
-                value2: Formatters.formatCurrency(project.approvedValue),
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                title1: 'Total Captado',
-                value1: Formatters.formatCurrency(project.totalCollected),
-                title2: 'Responsável Fiscal',
-                value2: project.fiscalResponsible,
-              ),
-              const Divider(height: 24),
-
-              // --- Seção de Datas ---
-              _buildDetailRow(
-                title1: 'Apresentação',
-                value1: Formatters.formatApiDate(project.presentationDate),
-                title2: 'Aprovação',
-                value2: Formatters.formatApiDate(project.approvalDate),
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                title1: 'Início Captação',
-                value1: Formatters.formatApiDate(project.collectionStartDate),
-                title2: 'Final Captação',
-                value2: Formatters.formatApiDate(project.collectionEndDate),
-              ),
-              const SizedBox(height: 12),
-              _buildMultiLineDetail(
-                title: 'Período de Execução',
-                value:
-                    '${Formatters.formatApiDate(project.executionStartDate)} a ${Formatters.formatApiDate(project.executionEndDate)}',
-              ),
-              const SizedBox(height: 12),
-              _buildMultiLineDetail(
-                title: 'Data Prestação Contas',
-                value: Formatters.formatApiDate(project.accountabilityDate),
-              ),
-              const Divider(height: 24),
-
-              // --- Seção de Observações ---
-              _buildMultiLineDetail(
-                title: 'Observações',
-                value: project.observations,
-              ),
-            ],
+        constraints: const BoxConstraints(
+          // define uma altura máxima opcional, pra evitar travar o layout
+          maxHeight: 400, // ajuste conforme necessário
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              bottom: 16.0,
+              top: 8.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(height: 1, thickness: 1),
+                const SizedBox(height: 16),
+                _buildDetailRow(
+                  title1: 'Valor Apresentado',
+                  value1: Formatters.formatCurrency(project.presentedValue),
+                  title2: 'Valor Aprovado',
+                  value2: Formatters.formatCurrency(project.approvedValue),
+                ),
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  title1: 'Total Captado',
+                  value1: Formatters.formatCurrency(project.totalCollected),
+                  title2: 'Responsável Fiscal',
+                  value2: project.fiscalResponsible,
+                ),
+                const Divider(height: 24),
+                _buildDetailRow(
+                  title1: 'Apresentação',
+                  value1: Formatters.formatApiDate(project.presentationDate),
+                  title2: 'Aprovação',
+                  value2: Formatters.formatApiDate(project.approvalDate),
+                ),
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  title1: 'Início Captação',
+                  value1: Formatters.formatApiDate(project.collectionStartDate),
+                  title2: 'Final Captação',
+                  value2: Formatters.formatApiDate(project.collectionEndDate),
+                ),
+                const SizedBox(height: 12),
+                _buildMultiLineDetail(
+                  title: 'Período de Execução',
+                  value:
+                      '${Formatters.formatApiDate(project.executionStartDate)} a ${Formatters.formatApiDate(project.executionEndDate)}',
+                ),
+                const SizedBox(height: 12),
+                _buildMultiLineDetail(
+                  title: 'Data Prestação Contas',
+                  value: Formatters.formatApiDate(project.accountabilityDate),
+                ),
+                const Divider(height: 24),
+                _buildMultiLineDetail(
+                  title: 'Conta bancária',
+                  value: project.bankAccount ?? "Sem conta bancária",
+                ),
+                const Divider(height: 24),
+                _buildMultiLineDetail(
+                  title: 'Objetivo',
+                  value: project.observations,
+                ),
+              ],
+            ),
           ),
         ),
       );

@@ -26,6 +26,7 @@ class Project {
   final String executionStartDate;
   final String executionEndDate;
   final String observations;
+  final String? bankAccount;
   final String color;
   final List<ProjectFile> files;
 
@@ -52,6 +53,7 @@ class Project {
     required this.observations,
     required this.color,
     this.files = const [],
+    this.bankAccount,
   });
 
   factory Project.fromJson(Map<String, dynamic> json) {
@@ -103,6 +105,7 @@ class Project {
       presentationDate: json['presentation_date'] ?? '',
       presentedValue: parseToDouble(json['presented_value']) ?? 0.0,
       approvalDate: json['approval_date'] ?? '',
+      bankAccount: json['bank_account'] ?? '',
       approvedValue: parseToDouble(json['approved_value']),
       accountabilityDate: json['accountability_date'] ?? '',
       collectionStartDate: json['collection_start_date'] ?? '',
@@ -137,6 +140,7 @@ class Project {
       'observations': observations,
       'created_by': createdBy,
       'color': color,
+      'bank_account': bankAccount,
     };
   }
 
@@ -163,6 +167,7 @@ class Project {
     String? executionEndDate,
     String? observations,
     String? color,
+    String? bankAccount,
     List<ProjectFile>? files,
   }) {
     return Project(
@@ -187,9 +192,11 @@ class Project {
       executionEndDate: executionEndDate ?? this.executionEndDate,
       observations: observations ?? this.observations,
       color: color ?? this.color,
+      bankAccount: bankAccount ?? this.bankAccount,
       files: files ?? this.files,
     );
   }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

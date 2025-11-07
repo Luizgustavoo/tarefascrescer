@@ -61,54 +61,58 @@ class _ColorSelectorState extends State<ColorSelector> {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Selecione uma cor',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 20),
-              GridView.count(
-                crossAxisCount: 5,
-                shrinkWrap: true,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                children: _availableColors.map((colorHex) {
-                  final color = _colorFromHex(colorHex);
-                  final isSelected = colorHex == _currentColor;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() => _currentColor = colorHex);
+          child: SingleChildScrollView(
+            child: Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Selecione uma cor',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 20),
+                  GridView.count(
+                    crossAxisCount: 5,
+                    shrinkWrap: true,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    children: _availableColors.map((colorHex) {
+                      final color = _colorFromHex(colorHex);
+                      final isSelected = colorHex == _currentColor;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() => _currentColor = colorHex);
 
-                      widget.onColorSelected(colorHex);
+                          widget.onColorSelected(colorHex);
 
-                      Navigator.of(context).pop();
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? Theme.of(context).primaryColor
-                              : Colors.transparent,
-                          width: 2.5,
+                          Navigator.of(context).pop();
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.transparent,
+                              width: 2.5,
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 18,
+                                )
+                              : null,
                         ),
-                      ),
-                      child: isSelected
-                          ? const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 20,
-                            )
-                          : null,
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },

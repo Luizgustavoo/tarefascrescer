@@ -97,6 +97,8 @@ class ProjectService {
       '${ApiService.baseUrl}/projects/update/${project.id}',
     );
     try {
+      final data = jsonEncode(project.toJson());
+
       final response = await http.put(
         url,
         headers: ApiService.getHeaders(authToken: token),
